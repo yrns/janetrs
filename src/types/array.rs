@@ -350,6 +350,32 @@ impl<'data> JanetArray<'data> {
         }
     }
 
+    /// Removes and returns the last element in a vector if the predicate
+    /// returns `true`, or [`None`] if the predicate returns false or the vector
+    /// is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use janetrs::{array, DeepEq, Janet, JanetArray};
+    /// # let _client = janetrs::client::JanetClient::init().unwrap();
+    ///
+    /// let mut array = array![1, 2, 3, 4];
+    /// let pred = |x: &mut Janet| match x.try_unwrap::<i32>() {
+    ///     Ok(x) => x % 2 == 0,
+    ///     Err(_) => false,
+    /// };
+    ///
+    /// assert_eq!(array.pop_if(pred), Some(Janet::from(4)));
+    /// assert!(array.deep_eq(&array![1, 2, 3]));
+    /// assert_eq!(array.pop_if(pred), None);
+    /// ```
+    pub fn pop_if<F>(&mut self, f: F) -> Option<Janet>
+    where F: FnOnce(&mut Janet) -> bool {
+        let last = self.last_mut()?;
+        if f(last) { self.pop() } else { None }
+    }
+
     /// Returns a copy of the last element in the array without modifying it.
     ///
     /// # Examples
@@ -2776,6 +2802,24 @@ mod tests {
 
             assert_eq!(last_peek, poped_last);
         }
+        Ok(())
+    }
+
+    #[test]
+    fn pop_if() -> Result<(), crate::client::Error> {
+        let _client = JanetClient::init()?;
+
+
+        let mut array = array![1, 2, 3, 4];
+        let pred = |x: &mut Janet| match x.try_unwrap::<i32>() {
+            Ok(x) => x % 2 == 0,
+            Err(_) => false,
+        };
+
+        assert_eq!(array.pop_if(pred), Some(Janet::from(4)));
+        assert!(array.deep_eq(&array![1, 2, 3]));
+        assert_eq!(array.pop_if(pred), None);
+
         Ok(())
     }
 
