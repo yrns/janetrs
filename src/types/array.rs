@@ -326,6 +326,32 @@ impl<'data> JanetArray<'data> {
         unsafe { evil_janet::janet_array_push(self.raw, value.inner) };
     }
 
+    /// Appends an element if there is sufficient spare capacity, otherwise an error is
+    /// returned with the element.
+    ///
+    /// Unlike [`push`] this method will not reallocate when there's insufficient
+    /// capacity. The caller should use [`reserve`] to ensure that
+    /// there is enough capacity.
+    ///
+    /// [`push`]: Self::push
+    /// [`reserve`]: Self::reserve
+    ///
+    ///
+    /// # Time complexity
+    ///
+    /// Takes *O*(1) time.
+    // TODO: Examples
+    #[inline]
+    pub fn push_within_capacity(&mut self, value: impl Into<Janet>) -> Result<(), Janet> {
+        let value = value.into();
+
+        if self.len() == self.capacity() {
+            return Err(value);
+        }
+        self.push(value);
+        Ok(())
+    }
+
     /// Removes the last element from a array and returns it, or None if it is
     /// empty.
     ///
@@ -2784,6 +2810,19 @@ mod tests {
         }
 
         assert_eq!(10, array.len());
+        Ok(())
+    }
+
+    #[test]
+    fn push_within_capacity() -> Result<(), crate::client::Error> {
+        let _client = JanetClient::init()?;
+        let mut array = JanetArray::with_capacity(3);
+
+        assert!(array.push_within_capacity(10).is_ok());
+        assert!(array.push_within_capacity(11).is_ok());
+        assert!(array.push_within_capacity(12).is_ok());
+        assert!(array.push_within_capacity(13).is_err());
+
         Ok(())
     }
 
