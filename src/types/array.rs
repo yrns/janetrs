@@ -2773,7 +2773,7 @@ impl FusedIterator for IntoIter<'_> {}
 #[cfg(all(test, any(feature = "amalgation", feature = "link-system")))]
 mod tests {
     use super::*;
-    use crate::{array, client::JanetClient};
+    use crate::{array, assert_deep_eq, client::JanetClient};
     use alloc::vec;
 
     #[test]
@@ -2856,7 +2856,7 @@ mod tests {
         };
 
         assert_eq!(array.pop_if(pred), Some(Janet::from(4)));
-        assert!(array.deep_eq(&array![1, 2, 3]));
+        assert_deep_eq!(array, array![1, 2, 3]);
         assert_eq!(array.pop_if(pred), None);
 
         Ok(())

@@ -1,3 +1,5 @@
+use core::fmt;
+
 #[doc(hidden)]
 #[macro_export]
 macro_rules! count {
@@ -403,6 +405,58 @@ macro_rules! jtry {
             }
         })
     }};
+}
+
+/// Like [`assert_eq`], but using deep_eq instead
+#[macro_export]
+macro_rules! assert_deep_eq {
+    ($left:expr, $right:expr $(,)?) => {
+        use $crate::types::DeepEq;
+        match (&$left, &$right) {
+            (left_val, right_val) => {
+                if !(left_val.deep_eq(right_val)) {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
+                    $crate::macros::assert_deep_eq_inner(&*left_val, &*right_val, ::core::option::Option::None);
+                }
+            }
+        }
+    };
+    ($left:expr, $right:expr, $($arg:tt)+) => {
+        match (&$left, &$right) {
+            (left_val, right_val) => {
+                if !(left_val.deep_eq(right_val)) {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
+                    $crate::macros::assert_deep_eq_inner(&*left_val, &*right_val, ::core::option::Option::Some(::core::format_args!($($arg)+)));
+                }
+            }
+        }
+    };
+}
+
+#[doc(hidden)]
+#[allow(dead_code)]
+#[track_caller]
+pub(crate) fn assert_deep_eq_inner(
+    left: &dyn fmt::Debug,
+    right: &dyn fmt::Debug,
+    args: Option<fmt::Arguments<'_>>,
+) -> ! {
+    match args {
+        Some(args) => panic!(
+            r#"assertion `left == right` failed: {args}
+  left: {left:?}
+ right: {right:?}"#
+        ),
+        None => panic!(
+            r#"assertion `left == right` failed
+  left: {left:?}
+ right: {right:?}"#
+        ),
+    }
 }
 
 #[cfg(all(test, any(feature = "amalgation", feature = "link-system")))]
