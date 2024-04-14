@@ -2438,6 +2438,77 @@ impl<'data> JanetArray<'data> {
         self.as_mut().rsplitn_mut(n, pred)
     }
 
+    // Creates an iterator which uses a closure to determine if an element should be removed.
+    /// If the closure returns true, then the element is removed and yielded.
+    /// If the closure returns false, the element will remain in the vector and will not
+    /// be yielded by the iterator.
+    ///
+    /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without
+    /// iterating or the iteration short-circuits, then the remaining elements will be
+    /// retained. Use [`retain`] with a negated predicate if you do not need the
+    /// returned iterator.
+    ///
+    /// [`retain`]: Self::retain
+    ///
+    /// Using this method is equivalent to the following code:
+    ///
+    /// ```
+    /// use janetrs::{array, Janet};
+    /// # let _client = janetrs::client::JanetClient::init().unwrap();
+    /// # let some_predicate = |x: &mut Janet| {
+    /// #     x.try_unwrap::<i32>()
+    /// #         .map(|x| x == 2 || x == 3 || x == 6)
+    /// #         .unwrap_or(false)
+    /// # };
+    /// # let mut arr = array![1, 2, 3, 4, 5, 6];
+    /// let mut i = 0;
+    /// while i < arr.len() {
+    ///     if some_predicate(&mut arr[i]) {
+    ///         let _val = arr.remove(i);
+    ///         // your code here
+    ///     } else {
+    ///         i += 1;
+    ///     }
+    /// }
+    /// # assert_deep_eq!(arr, array![1, 4, 5]);
+    /// ```
+    ///
+    /// But `extract_if` is easier to use. `extract_if` is also more efficient,
+    /// because it can backshift the elements of the array in bulk.
+    ///
+    /// Note that `extract_if` also lets you mutate every element in the filter closure,
+    /// regardless of whether you choose to keep or remove it.
+    ///
+    /// # Examples
+    ///
+    /// Splitting an array into evens and odds, reusing the original allocation:
+    ///
+    /// ```
+    /// use janetrs::{array, Janet, JanetArray};
+    /// # let _client = janetrs::client::JanetClient::init().unwrap();
+    ///
+    /// let mut numbers = array![1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15];
+    ///
+    /// let evens = numbers
+    ///     .extract_if(|x| x.try_unwrap::<i32>().map(|x| x % 2 == 0).unwrap_or(false))
+    ///     .collect::<JanetArray>();
+    /// let odds = numbers;
+    ///
+    /// assert_deep_eq!(evens, array![2, 4, 6, 8, 14]);
+    /// assert_deep_eq!(odds, array![1, 3, 5, 9, 11, 13, 15]);
+    /// ```
+    pub fn extract_if<F>(&mut self, filter: F) -> ExtractIf<'_, 'data, F>
+    where F: FnMut(&mut Janet) -> bool {
+        let old_len = self.len() as usize;
+        ExtractIf {
+            arr: self,
+            idx: 0,
+            del: 0,
+            old_len,
+            pred: filter,
+        }
+    }
+
     /// Return a raw pointer to the array raw structure.
     ///
     /// The caller must ensure that the array outlives the pointer this function returns,
@@ -2923,6 +2994,92 @@ impl ExactSizeIterator for IntoIter<'_> {}
 
 impl FusedIterator for IntoIter<'_> {}
 
+/// An iterator which uses a closure to determine if an element should be removed.
+///
+/// This struct is created by [`Vec::extract_if`].
+/// See its documentation for more.
+///
+/// # Example
+///
+/// ```
+/// use janetrs::{array, array::ExtractIf, Janet};
+/// let _client = crate::client::JanetClient::init()?;
+///
+/// let mut array = array![0, 1, 2];
+/// let iter: ExtractIf<'_, '_, _> =
+///     array.extract_if(|x| x.try_unwrap::<i32>().map(|x| x % 2 == 0).unwrap_or(false));
+/// ```
+#[derive(Debug)]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+pub struct ExtractIf<'a, 'data, F>
+where F: FnMut(&mut Janet) -> bool
+{
+    arr:     &'a mut JanetArray<'data>,
+    idx:     usize,
+    del:     usize,
+    old_len: usize,
+    pred:    F,
+}
+
+impl<F> Iterator for ExtractIf<'_, '_, F>
+where F: FnMut(&mut Janet) -> bool
+{
+    type Item = Janet;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        use core::slice;
+        unsafe {
+            while self.idx < self.old_len {
+                let i = self.idx;
+                let v = slice::from_raw_parts_mut(self.arr.as_mut_ptr(), self.old_len);
+                let drained = (self.pred)(&mut v[i]);
+
+                // Update the index *after* the predicate is called. If the index
+                // is updated prior and the predicate panics, the element at this
+                // index would be leaked.
+                self.idx += 1;
+                if drained {
+                    self.del += 1;
+                    return Some(ptr::read(&v[i]));
+                } else if self.del > 0 {
+                    let del = self.del;
+                    let src: *const Janet = &v[i];
+                    let dst: *mut Janet = &mut v[i - del];
+                    ptr::copy_nonoverlapping(src, dst, 1);
+                }
+            }
+            None
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(self.old_len - self.idx))
+    }
+}
+
+impl<F> Drop for ExtractIf<'_, '_, F>
+where F: FnMut(&mut Janet) -> bool
+{
+    fn drop(&mut self) {
+        unsafe {
+            if self.idx < self.old_len && self.del > 0 {
+                // This is a pretty messed up state, and there isn't really an
+                // obviously right thing to do. We don't want to keep trying
+                // to execute `pred`, so we just backshift all the unprocessed
+                // elements and tell the vec that they still exist. The backshift
+                // is required to prevent a double-drop of the last successfully
+                // drained item prior to a panic in the predicate.
+                let ptr = self.arr.as_mut_ptr();
+                let src = ptr.add(self.idx);
+                let dst = src.sub(self.del);
+                let tail_len = self.old_len - self.idx;
+                src.copy_to(dst, tail_len);
+            }
+            self.arr.set_len((self.old_len - self.del) as i32);
+        }
+    }
+}
+
 #[cfg(all(test, any(feature = "amalgation", feature = "link-system")))]
 mod tests {
     use super::*;
@@ -3277,6 +3434,29 @@ mod tests {
 
         assert!(array.is_empty());
         assert_eq!(array.capacity(), 6);
+        Ok(())
+    }
+
+    #[test]
+    fn extract_if() -> Result<(), crate::client::Error> {
+        let _client = crate::client::JanetClient::init()?;
+
+        let mut array = array![0, 1, 2];
+        let _iter: ExtractIf<'_, '_, _> =
+            array.extract_if(|x| x.try_unwrap::<i32>().map(|x| x % 2 == 0).unwrap_or(false));
+
+
+        // Splitting an array into evens and odds, reusing the original allocation:
+
+        let mut numbers = array![1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15];
+
+        let evens = numbers
+            .extract_if(|x| x.try_unwrap::<i32>().map(|x| x % 2 == 0).unwrap_or(false))
+            .collect::<JanetArray>();
+        let odds = numbers;
+
+        assert_deep_eq!(evens, array![2, 4, 6, 8, 14]);
+        assert_deep_eq!(odds, array![1, 3, 5, 9, 11, 13, 15]);
         Ok(())
     }
 }

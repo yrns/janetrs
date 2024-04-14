@@ -410,7 +410,7 @@ macro_rules! jtry {
 /// Like [`assert_eq`], but using deep_eq instead
 #[macro_export]
 macro_rules! assert_deep_eq {
-    ($left:expr, $right:expr $(,)?) => {
+    ($left:expr, $right:expr $(,)?) => {{
         use $crate::types::DeepEq;
         match (&$left, &$right) {
             (left_val, right_val) => {
@@ -422,8 +422,8 @@ macro_rules! assert_deep_eq {
                 }
             }
         }
-    };
-    ($left:expr, $right:expr, $($arg:tt)+) => {
+    }};
+    ($left:expr, $right:expr, $($arg:tt)+) => {{
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(left_val.deep_eq(right_val)) {
@@ -434,7 +434,7 @@ macro_rules! assert_deep_eq {
                 }
             }
         }
-    };
+    }};
 }
 
 #[doc(hidden)]
