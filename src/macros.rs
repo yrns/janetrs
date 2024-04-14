@@ -428,7 +428,7 @@ macro_rules! assert_deep_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::macros::assert_deep_eq_inner(&*left_val, &*right_val, ::core::option::Option::None);
+                    $crate::macros::assert_deep_inner("==", &*left_val, &*right_val, ::core::option::Option::None);
                 }
             }
         }
@@ -440,7 +440,47 @@ macro_rules! assert_deep_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::macros::assert_deep_eq_inner(&*left_val, &*right_val, ::core::option::Option::Some(::core::format_args!($($arg)+)));
+                    $crate::macros::assert_deep_inner("==", &*left_val, &*right_val, ::core::option::Option::Some(::core::format_args!($($arg)+)));
+                }
+            }
+        }
+    }};
+}
+
+/// Like [`assert_ne`], but using [`deep_ne`]` internally instead.
+///
+/// Unlike the other macros, this use uses the Rust-panic mechanic, because this must be
+/// used to assert values in Rust tests, that detects Rust-panics only.
+///
+/// It is safe to use this macros in janet exposed code, since we are using "C-unwind"
+/// extern blocks internally, but it is not interesting to Janet libraries authors when it
+/// is a recoverable error, as Janet also uses it's Janet-panics to throw recoverable
+/// exception errors.
+///
+/// [`deep_ne`]: crate::DeepEq::deep_ne
+#[macro_export]
+macro_rules! assert_deep_ne {
+    ($left:expr, $right:expr $(,)?) => {{
+        use $crate::DeepEq;
+        match (&$left, &$right) {
+            (left_val, right_val) => {
+                if !(left_val.deep_ne(right_val)) {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
+                    $crate::macros::assert_deep_inner("!=", &*left_val, &*right_val, ::core::option::Option::None);
+                }
+            }
+        }
+    }};
+    ($left:expr, $right:expr, $($arg:tt)+) => {{
+        match (&$left, &$right) {
+            (left_val, right_val) => {
+                if !(left_val.deep_ne(right_val)) {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
+                    $crate::macros::assert_deep_inner("!=", &*left_val, &*right_val, ::core::option::Option::Some(::core::format_args!($($arg)+)));
                 }
             }
         }
@@ -450,19 +490,20 @@ macro_rules! assert_deep_eq {
 #[doc(hidden)]
 #[allow(dead_code)]
 #[track_caller]
-pub(crate) fn assert_deep_eq_inner(
+pub(crate) fn assert_deep_inner(
+    op: &'static str,
     left: &dyn fmt::Debug,
     right: &dyn fmt::Debug,
     args: Option<fmt::Arguments<'_>>,
 ) -> ! {
     match args {
         Some(args) => panic!(
-            r#"assertion `left == right` failed: {args}
+            r#"assertion `left {op} right` failed: {args}
   left: {left:?}
  right: {right:?}"#
         ),
         None => panic!(
-            r#"assertion `left == right` failed
+            r#"assertion `left {op} right` failed
   left: {left:?}
  right: {right:?}"#
         ),

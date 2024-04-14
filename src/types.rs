@@ -61,6 +61,11 @@ use crate::env::JanetEnvironment;
 /// implementations.
 pub trait DeepEq<Rhs = Self> {
     fn deep_eq(&self, other: &Rhs) -> bool;
+
+    #[inline]
+    fn deep_ne(&self, other: &Rhs) -> bool {
+        !self.deep_eq(other)
+    }
 }
 
 
