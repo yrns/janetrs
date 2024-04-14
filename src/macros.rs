@@ -407,11 +407,21 @@ macro_rules! jtry {
     }};
 }
 
-/// Like [`assert_eq`], but using deep_eq instead
+/// Like [`assert_eq`], but using [`deep_eq`]` internally instead.
+///
+/// Unlike the other macros, this use uses the Rust-panic mechanic, because this must be
+/// used to assert values in Rust tests, that detects Rust-panics only.
+///
+/// It is safe to use this macros in janet exposed code, since we are using "C-unwind"
+/// extern blocks internally, but it is not interesting to Janet libraries authors when it
+/// is a recoverable error, as Janet also uses it's Janet-panics to throw recoverable
+/// exception errors.
+///
+/// [`deep_eq`]: crate::DeepEq::deep_eq
 #[macro_export]
 macro_rules! assert_deep_eq {
     ($left:expr, $right:expr $(,)?) => {{
-        use $crate::types::DeepEq;
+        use $crate::DeepEq;
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(left_val.deep_eq(right_val)) {
