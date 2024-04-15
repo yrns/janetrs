@@ -208,6 +208,64 @@ impl<'data> JanetArray<'data> {
         self.len() == 0
     }
 
+    /// Splits the collection into two at the given index.
+    ///
+    /// Returns a newly allocated vector containing the elements in the range
+    /// `[at, len)`. After the call, the original vector will be left containing
+    /// the elements `[0, at)` with its previous capacity unchanged.
+    ///
+    /// - If you want to take ownership of the entire contents and capacity of the vector,
+    ///   see [`mem::take`] or [`mem::replace`].
+    /// - If you don't need the returned vector at all, see [`Vec::truncate`].
+    /// - If you want to take ownership of an arbitrary subslice, or you don't necessarily
+    ///   want to store the removed items in a vector, see [`Vec::drain`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `at > len`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use janetrs::array;
+    /// # let _client = janetrs::client::JanetClient::init().unwrap();
+    ///
+    /// let mut arr = array![1, 2, 3];
+    /// let arr2 = arr.split_off(1);
+    /// assert_deep_eq!(arr, array![1]);
+    /// assert_deep_eq!(arr2, array![2, 3]);
+    /// ```
+    #[inline]
+    #[must_use = "use `.truncate()` if you don't need the other half"]
+    pub fn split_off(&mut self, at: i32) -> Self {
+        #[cold]
+        #[track_caller]
+        fn assert_failed(at: i32, len: i32) -> ! {
+            crate::jpanic!("`at` split index (is {at}) should be <= len (is {len})")
+        }
+
+        if at > self.len() {
+            assert_failed(at, self.len());
+        }
+
+        let other_len = self.len() - at;
+        let mut other = JanetArray::with_capacity(other_len);
+
+        self.set_len(at);
+
+        other.set_len(other_len);
+
+        unsafe {
+            ptr::copy_nonoverlapping(
+                self.as_ptr().add(at as usize),
+                other.as_mut_ptr(),
+                other.len() as usize,
+            );
+        }
+
+        other
+    }
+
     /// Set the length of the array to `new_len`.
     ///
     /// If `new_len` is greater than the current
@@ -3329,6 +3387,18 @@ mod tests {
         let jarr: JanetArray<'_> = vec.into_iter().collect();
         assert_eq!(jarr.len(), 100);
         assert!(jarr.iter().all(|j| j == Janet::number(101.0)));
+        Ok(())
+    }
+
+    #[test]
+    fn split_off() -> Result<(), crate::client::Error> {
+        let _client = JanetClient::init()?;
+
+        let mut arr = array![1, 2, 3];
+        let arr2 = arr.split_off(1);
+        assert_deep_eq!(arr, array![1]);
+        assert_deep_eq!(arr2, array![2, 3]);
+
         Ok(())
     }
 
