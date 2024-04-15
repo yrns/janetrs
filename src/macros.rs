@@ -268,11 +268,8 @@ macro_rules! jpanic {
     () => {
         $crate::util::_panic($crate::Janet::from("explicit panic"))
     };
-    ($msg:expr $(,)?) => {
-        $crate::util::_panic($crate::Janet::from($msg))
-    };
-    ($msg:expr, $($arg:tt)+) => {
-        $crate::util::_panic($crate::Janet::from(::alloc::format!($msg, $($arg)+).as_str()))
+    ($($arg:tt)+) => {
+        $crate::util::_panic($crate::Janet::from(::alloc::format!($($arg)+).as_str()))
     };
 }
 
@@ -295,11 +292,8 @@ macro_rules! jpanic {
     () => {
         $crate::util::_panic($crate::Janet::from("explicit panic"))
     };
-    ($msg:expr $(,)?) => {
-        $crate::util::_panic($crate::Janet::from($msg))
-    };
-    ($msg:expr, $($arg:tt)+) => {
-        $crate::util::_panic($crate::Janet::from(::std::format!($msg, $($arg)+).as_str()))
+    ($($arg:tt)+) => {
+        $crate::util::_panic($crate::Janet::from(::std::format!($($arg)+).as_str()))
     };
 }
 
