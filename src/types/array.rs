@@ -1175,12 +1175,12 @@ impl<'data> JanetArray<'data> {
     /// # Examples
     ///
     /// ```
-    /// use janetrs::{array, Janet};
+    /// use janetrs::{array, assert_deep_eq, Janet};
     /// # let _client = janetrs::client::JanetClient::init().unwrap();
     ///
     /// let mut v = array!["a", "b", "c", "d"];
     /// v.swap(1, 3);
-    /// assert_eq!(v.as_ref(), array!["a", "d", "c", "b"].as_ref());
+    /// assert_deep_eq!(v, array!["a", "d", "c", "b"]);
     /// ```
     #[inline]
     pub fn swap(&mut self, a: i32, b: i32) {
@@ -1194,6 +1194,47 @@ impl<'data> JanetArray<'data> {
         // panic when out of bounds.
         unsafe {
             ptr::swap(pa, pb);
+        }
+    }
+
+    /// Swaps two elements in the slice, without doing bounds checking.
+    ///
+    /// For a safe alternative see [`swap`].
+    ///
+    /// # Arguments
+    ///
+    /// * a - The index of the first element
+    /// * b - The index of the second element
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with an out-of-bounds index is *[undefined behavior]*.
+    /// The caller has to ensure that `a < self.len()` and `b < self.len()`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use janetrs::{array, assert_deep_eq, Janet};
+    /// # let _client = janetrs::client::JanetClient::init().unwrap();
+    ///
+    /// let mut arr = array!["a", "b", "c", "d"];
+    /// // SAFETY: we know that 1 and 3 are both indices of the slice
+    /// unsafe { arr.swap_unchecked(1, 3) };
+    /// assert_deep_eq!(arr, array!["a", "d", "c", "b"]);
+    /// ```
+    ///
+    /// [`swap`]: Self::swap
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    pub unsafe fn swap_unchecked(&mut self, a: i32, b: i32) {
+        debug_assert!(
+            a >= 0 && a < self.len() && b >= 0 && b < self.len(),
+            "JanetArray::swap_unchecked requires that the indices are within the slice",
+        );
+
+        let ptr = self.as_mut_ptr();
+        // SAFETY: caller has to guarantee that `a < self.len()` and `b < self.len()`
+        unsafe {
+            ptr::swap(ptr.add(a as usize), ptr.add(b as usize));
         }
     }
 
