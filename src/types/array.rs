@@ -4,7 +4,7 @@ use core::{
     fmt::{self, Debug, Write},
     iter::FusedIterator,
     marker::PhantomData,
-    ops::{Index, IndexMut},
+    ops::{Bound, Index, IndexMut, Range, RangeBounds},
     ptr,
     slice::{
         Chunks, ChunksExact, ChunksExactMut, ChunksMut, RChunks, RChunksExact, RChunksExactMut,
@@ -13,6 +13,8 @@ use core::{
 };
 
 use evil_janet::{Janet as CJanet, JanetArray as CJanetArray};
+
+use crate::jpanic;
 
 use super::{DeepEq, Janet, JanetExtend, JanetTuple};
 
@@ -561,6 +563,42 @@ impl<'data> JanetArray<'data> {
     pub unsafe fn get_unchecked_mut(&mut self, index: i32) -> &Janet {
         let item = (*self.raw).data.offset(index as isize) as *mut Janet;
         &mut *item
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn get_range<R>(&self, range: R) -> Option<&[Janet]>
+    where R: RangeBounds<i32> {
+        into_range(self.len(), (range.start_bound(), range.end_bound()))
+            .and_then(|range| self.get_r(range))
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn get_range_mut<R>(&mut self, range: R) -> Option<&mut [Janet]>
+    where R: RangeBounds<i32> {
+        into_range(self.len(), (range.start_bound(), range.end_bound()))
+            .and_then(|range| self.get_r_mut(range))
+    }
+
+    /// # Safety
+    #[inline]
+    pub unsafe fn get_range_unchecked<R>(&self, range: R) -> &[Janet]
+    where R: RangeBounds<i32> {
+        self.get_r_unchecked(into_range_unchecked(
+            self.len(),
+            (range.start_bound(), range.end_bound()),
+        ))
+    }
+
+    /// # Safety
+    #[inline]
+    pub unsafe fn get_range_unchecked_mut<R>(&mut self, range: R) -> &mut [Janet]
+    where R: RangeBounds<i32> {
+        self.get_r_unchecked_mut(into_range_unchecked(
+            self.len(),
+            (range.start_bound(), range.end_bound()),
+        ))
     }
 
     /// Returns `true` if the array contains an element with the given `value`.
@@ -2671,6 +2709,52 @@ impl<'data> JanetArray<'data> {
     }
 }
 
+// Private methods
+impl<'data> JanetArray<'data> {
+    fn get_r(&self, range: Range<i32>) -> Option<&[Janet]> {
+        if range.start < 0 || range.start > range.end || range.end > self.len() {
+            None
+        } else {
+            // SAFETY: `self` is checked to be valid and in bounds above.
+            unsafe { Some(self.get_r_unchecked(range)) }
+        }
+    }
+
+    unsafe fn get_r_unchecked(&self, range: Range<i32>) -> &[Janet] {
+        // SAFETY: the caller guarantees that `slice` is not dangling, so it
+        // cannot be longer than `isize::MAX`. They also guarantee that
+        // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
+        // so the call to `add` is safe and the length calculation cannot overflow.
+        unsafe {
+            let new_len = usize::unchecked_sub(range.end as usize, range.start as usize);
+            &*ptr::slice_from_raw_parts(self.as_ptr().add(range.start as usize), new_len)
+        }
+    }
+
+    fn get_r_mut(&mut self, range: Range<i32>) -> Option<&mut [Janet]> {
+        if range.start < 0 || range.start > range.end || range.end > self.len() {
+            None
+        } else {
+            // SAFETY: `self` is checked to be valid and in bounds above.
+            unsafe { Some(self.get_r_unchecked_mut(range)) }
+        }
+    }
+
+    unsafe fn get_r_unchecked_mut(&mut self, range: Range<i32>) -> &mut [Janet] {
+        // SAFETY: the caller guarantees that `slice` is not dangling, so it
+        // cannot be longer than `isize::MAX`. They also guarantee that
+        // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
+        // so the call to `add` is safe and the length calculation cannot overflow.
+        unsafe {
+            let new_len = usize::unchecked_sub(range.end as usize, range.start as usize);
+            &mut *ptr::slice_from_raw_parts_mut(
+                self.as_mut_ptr().add(range.start as usize),
+                new_len,
+            )
+        }
+    }
+}
+
 impl Debug for JanetArray<'_> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -3199,6 +3283,46 @@ where F: FnMut(&mut Janet) -> bool
     }
 }
 
+/// Convert pair of `ops::Bound`s into `ops::Range`.
+/// Returns `None` on overflowing indices.
+pub(crate) fn into_range(len: i32, (start, end): (Bound<&i32>, Bound<&i32>)) -> Option<Range<i32>> {
+    let start = match start {
+        Bound::Included(&start) => start,
+        Bound::Excluded(&start) => start.checked_add(1)?,
+        Bound::Unbounded => 0,
+    };
+
+    let end = match end {
+        Bound::Included(&end) => end.checked_add(1)?,
+        Bound::Excluded(&end) => end,
+        Bound::Unbounded => len,
+    };
+
+    // Don't bother with checking `start < end` and `end <= len`
+    // since these checks are handled by `Range` impls
+
+    Some(start..end)
+}
+
+/// Convert pair of `ops::Bound`s into `ops::Range` without performing any bounds checking
+/// and (in debug) overflow checking
+pub(crate) fn into_range_unchecked(
+    len: i32,
+    (start, end): (Bound<&i32>, Bound<&i32>),
+) -> Range<i32> {
+    let start = match start {
+        Bound::Included(&i) => i,
+        Bound::Excluded(&i) => i + 1,
+        Bound::Unbounded => 0,
+    };
+    let end = match end {
+        Bound::Included(&i) => i + 1,
+        Bound::Excluded(&i) => i,
+        Bound::Unbounded => len,
+    };
+    start..end
+}
+
 #[cfg(all(test, any(feature = "amalgation", feature = "link-system")))]
 mod tests {
     use super::*;
@@ -3335,6 +3459,55 @@ mod tests {
 
         *array.get_mut(0).unwrap() = Janet::boolean(true);
         assert_eq!(Some(&Janet::boolean(true)), array.get(0));
+        Ok(())
+    }
+
+    #[test]
+    #[allow(clippy::reversed_empty_ranges)]
+    fn get_range() -> Result<(), crate::client::Error> {
+        let _client = JanetClient::init()?;
+        let array = array![1, 2, 3, 4, 5];
+
+        assert_eq!(array.len(), 5);
+
+        assert_eq!(None, array.get_range(-1..));
+        assert_eq!(None, array.get_range(-1..3));
+        assert_eq!(None, array.get_range(-1..-2));
+        assert_eq!(None, array.get_range(-2..-1));
+        assert_eq!(None, array.get_range(..=5));
+
+        assert_eq!(Some(array![1, 2].as_ref()), array.get_range(0..2));
+        assert_eq!(Some(array![1, 2, 3].as_ref()), array.get_range(0..=2));
+        assert_eq!(Some(array![1, 2, 3, 4].as_ref()), array.get_range(..=3));
+        assert_eq!(Some(array![2, 3, 4, 5].as_ref()), array.get_range(1..));
+        assert_eq!(Some(array![1, 2, 3, 4, 5].as_ref()), array.get_range(..));
+
+        Ok(())
+    }
+
+    #[test]
+    #[allow(clippy::reversed_empty_ranges)]
+    fn get_range_mut() -> Result<(), crate::client::Error> {
+        let _client = JanetClient::init()?;
+        let mut array = array![1, 2, 3, 4, 5];
+
+        assert_eq!(array.len(), 5);
+
+        assert_eq!(None, array.get_range_mut(-1..));
+        assert_eq!(None, array.get_range_mut(-1..3));
+        assert_eq!(None, array.get_range_mut(-2..-1));
+        assert_eq!(None, array.get_range_mut(-2..-1));
+        assert_eq!(None, array.get_range_mut(..=5));
+
+        assert_eq!(Some(array![1, 2].as_mut()), array.get_range_mut(0..2));
+        assert_eq!(Some(array![1, 2, 3].as_mut()), array.get_range_mut(0..=2));
+        assert_eq!(Some(array![1, 2, 3, 4].as_mut()), array.get_range_mut(..=3));
+        assert_eq!(Some(array![2, 3, 4, 5].as_mut()), array.get_range_mut(1..));
+        assert_eq!(
+            Some(array![1, 2, 3, 4, 5].as_mut()),
+            array.get_range_mut(..)
+        );
+
         Ok(())
     }
 
