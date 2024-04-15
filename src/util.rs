@@ -1,5 +1,7 @@
 //! Module for stuff that are not required either to use in a application or to write
 //! janet modules.
+use core::fmt;
+
 use crate::types::Janet;
 
 pub use janetrs_version::{JanetBuildConfig, JanetVersion};
@@ -37,4 +39,27 @@ pub fn check_range_arity(args: &[Janet], min: usize, max: Option<usize>) {
 #[inline]
 pub fn _panic(msg: Janet) -> ! {
     unsafe { evil_janet::janet_panicv(msg.inner) }
+}
+
+#[doc(hidden)]
+#[allow(dead_code)]
+#[track_caller]
+pub fn assert_deep_inner(
+    op: &'static str,
+    left: &dyn fmt::Debug,
+    right: &dyn fmt::Debug,
+    args: Option<fmt::Arguments<'_>>,
+) -> ! {
+    match args {
+        Some(args) => panic!(
+            r#"assertion `left {op} right` failed: {args}
+  left: {left:?}
+ right: {right:?}"#
+        ),
+        None => panic!(
+            r#"assertion `left {op} right` failed
+  left: {left:?}
+ right: {right:?}"#
+        ),
+    }
 }

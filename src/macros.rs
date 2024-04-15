@@ -422,7 +422,7 @@ macro_rules! assert_deep_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::macros::assert_deep_inner("==", &*left_val, &*right_val, ::core::option::Option::None);
+                    $crate::util::assert_deep_inner("==", &*left_val, &*right_val, ::core::option::Option::None);
                 }
             }
         }
@@ -434,7 +434,7 @@ macro_rules! assert_deep_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::macros::assert_deep_inner("==", &*left_val, &*right_val, ::core::option::Option::Some(::core::format_args!($($arg)+)));
+                    $crate::util::assert_deep_inner("==", &*left_val, &*right_val, ::core::option::Option::Some(::core::format_args!($($arg)+)));
                 }
             }
         }
@@ -462,7 +462,7 @@ macro_rules! assert_deep_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::macros::assert_deep_inner("!=", &*left_val, &*right_val, ::core::option::Option::None);
+                    $crate::util::assert_deep_inner("!=", &*left_val, &*right_val, ::core::option::Option::None);
                 }
             }
         }
@@ -474,34 +474,11 @@ macro_rules! assert_deep_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::macros::assert_deep_inner("!=", &*left_val, &*right_val, ::core::option::Option::Some(::core::format_args!($($arg)+)));
+                    $crate::util::assert_deep_inner("!=", &*left_val, &*right_val, ::core::option::Option::Some(::core::format_args!($($arg)+)));
                 }
             }
         }
     }};
-}
-
-#[doc(hidden)]
-#[allow(dead_code)]
-#[track_caller]
-pub(crate) fn assert_deep_inner(
-    op: &'static str,
-    left: &dyn fmt::Debug,
-    right: &dyn fmt::Debug,
-    args: Option<fmt::Arguments<'_>>,
-) -> ! {
-    match args {
-        Some(args) => panic!(
-            r#"assertion `left {op} right` failed: {args}
-  left: {left:?}
- right: {right:?}"#
-        ),
-        None => panic!(
-            r#"assertion `left {op} right` failed
-  left: {left:?}
- right: {right:?}"#
-        ),
-    }
 }
 
 #[cfg(all(test, any(feature = "amalgation", feature = "link-system")))]
