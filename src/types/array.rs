@@ -1197,7 +1197,7 @@ impl<'data> JanetArray<'data> {
         }
     }
 
-    /// Swaps two elements in the slice, without doing bounds checking.
+    /// Swaps two elements in the array, without doing bounds checking.
     ///
     /// For a safe alternative see [`swap`].
     ///
@@ -1287,7 +1287,27 @@ impl<'data> JanetArray<'data> {
     #[cfg_attr(feature = "inline-more", inline)]
     #[must_use = "this returns a repeated array as a new JanetArray, without modifying the original"]
     pub fn repeat(&self, n: usize) -> Self {
-        self.as_ref().repeat(n).into_iter().collect()
+        // self.as_ref().repeat(n).into_iter().collect()
+        if n == 0 {
+            return JanetArray::new();
+        }
+
+        // If `n` is larger than zero, it can be split as
+        // `n = 2^expn + rem (2^expn > rem, expn >= 0, rem >= 0)`.
+        // `2^expn` is the number represented by the leftmost '1' bit of `n`,
+        // and `rem` is the remaining part of `n`.
+
+        let capacity = match self.len().checked_mul(n as i32) {
+            Some(cap) => cap,
+            None => jpanic!("capacity overflow"),
+        };
+        let mut buf = JanetArray::with_capacity(capacity);
+
+        for _ in 0..n {
+            Extend::extend(&mut buf, self);
+        }
+
+        buf
     }
 
     /// Returns `true` if `needle` is a prefix of the array.
@@ -3187,7 +3207,7 @@ mod tests {
 
     #[test]
     fn empty_as_ref_as_mut() -> Result<(), crate::client::Error> {
-        let _client = crate::client::JanetClient::init()?;
+        let _client = JanetClient::init()?;
 
         let mut v = array![];
         assert!(v.as_ref().is_empty());
@@ -3549,8 +3569,21 @@ mod tests {
     }
 
     #[test]
+    fn repeat() -> Result<(), crate::client::Error> {
+        let _client = JanetClient::init()?;
+
+        let array = array![1, 2];
+        let repeated = array.repeat(6);
+
+        assert_eq!(repeated.len(), 12);
+        assert_deep_eq!(repeated, array![1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2]);
+
+        Ok(())
+    }
+
+    #[test]
     fn extract_if() -> Result<(), crate::client::Error> {
-        let _client = crate::client::JanetClient::init()?;
+        let _client = JanetClient::init()?;
 
         let mut array = array![0, 1, 2];
         let _iter: ExtractIf<'_, '_, _> =
