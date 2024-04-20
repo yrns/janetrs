@@ -1,5 +1,3 @@
-use core::fmt;
-
 #[doc(hidden)]
 #[macro_export]
 macro_rules! count {
