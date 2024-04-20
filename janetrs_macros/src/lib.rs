@@ -1,4 +1,5 @@
 extern crate proc_macro;
+use proc_macro::TokenStream;
 
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{parse_macro_input, spanned::Spanned};
@@ -43,10 +44,7 @@ use crate::utils::ModArgs;
 /// - `#[janet_fn(check_mut_ref)]`
 /// - `#[janet_fn(arity(<...>), check_mut_ref)]` Combining both
 #[proc_macro_attribute]
-pub fn janet_fn(
-    args: proc_macro::TokenStream,
-    input: proc_macro::TokenStream,
-) -> proc_macro::TokenStream {
+pub fn janet_fn(args: TokenStream, input: TokenStream) -> TokenStream {
     let func = parse_macro_input!(input as syn::Item);
 
     let args = parse_macro_input!(args as Args);
@@ -221,10 +219,7 @@ const CURRENT_JANET: JanetVersion = JanetVersion::current();
 ///
 /// That means that the range is open in the maximum version: [MIN_VERSION, MAX_VERSION).
 #[proc_macro_attribute]
-pub fn janet_version(
-    args: proc_macro::TokenStream,
-    input: proc_macro::TokenStream,
-) -> proc_macro::TokenStream {
+pub fn janet_version(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as JanetVersionArgs);
 
     match parse_args(&args.min_version.value()) {
@@ -235,7 +230,7 @@ pub fn janet_version(
                         if req_min_ver <= CURRENT_JANET && req_max_ver > CURRENT_JANET {
                             input
                         } else {
-                            proc_macro::TokenStream::new()
+                            TokenStream::new()
                         }
                     },
                     Err(err) => {
@@ -246,7 +241,7 @@ pub fn janet_version(
             } else if req_min_ver <= CURRENT_JANET {
                 input
             } else {
-                proc_macro::TokenStream::new()
+                TokenStream::new()
             }
         },
         Err(err) => {
@@ -276,15 +271,12 @@ fn parse_args(arg: &str) -> Result<JanetVersion, String> {
 /// **Usage:** `#[cjvg(<MIN_VERSION>, [MAX_VERSION])]` where `MIN_VERSION` and
 /// `MAX_VERSION` are string literals.
 ///
-/// A macro da conditionally includes the `input` if the version of Janet is bigger or
+/// A macro that conditionally includes the `input` if the version of Janet is bigger or
 /// equal to the passed minimal version and smaller than the passed maximum version.
 ///
 /// That means that the range is open in the maximum version: [MIN_VERSION, MAX_VERSION).
 #[proc_macro_attribute]
-pub fn cjvg(
-    args: proc_macro::TokenStream,
-    input: proc_macro::TokenStream,
-) -> proc_macro::TokenStream {
+pub fn cjvg(args: TokenStream, input: TokenStream) -> TokenStream {
     janet_version(args, input)
 }
 
@@ -326,7 +318,7 @@ pub fn cjvg(
 /// );
 /// ```
 #[proc_macro]
-pub fn declare_janet_mod(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn declare_janet_mod(input: TokenStream) -> TokenStream {
     let ModArgs {
         mod_name,
         fn_names,
@@ -446,7 +438,7 @@ pub fn declare_janet_mod(input: proc_macro::TokenStream) -> proc_macro::TokenStr
 ///
 /// That means that the range is open in the maximum version: [MIN_VERSION, MAX_VERSION).
 #[proc_macro]
-pub fn check_janet_version(args: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn check_janet_version(args: TokenStream) -> TokenStream {
     let global_span = proc_macro2::TokenStream::from(args.clone()).span();
     let args = parse_macro_input!(args as JanetVersionArgs);
 
