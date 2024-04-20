@@ -128,6 +128,10 @@ pub fn janet_fn(args: TokenStream, input: TokenStream) -> TokenStream {
             line.push_str("_line_");
             syn::Ident::new(&line, name.span())
         };
+        let num_doc_string_lines_ = {
+            let count = doc_str.to_string().split(r"\n").count() + 2;
+            syn::LitInt::new(&count.to_string(), name.span())
+        };
         // let syn::ReturnType::Type(_, type_path) = f.sig.output;
 
         // check for inputs
@@ -183,7 +187,7 @@ pub fn janet_fn(args: TokenStream, input: TokenStream) -> TokenStream {
                 #[allow(non_upper_case_globals)]
                 const #name_file_: &str = ::core::concat!(::core::file!(), "\0");
                 #[allow(non_upper_case_globals)]
-                const #name_line_: u32 = ::core::line!() + 1;
+                const #name_line_: u32 = ::core::line!() + #num_doc_string_lines_;
                 #(#attrs)* #[no_mangle] #vis unsafe extern "C-unwind" fn #name(argc: i32, argv: *mut ::janetrs::lowlevel::Janet) -> ::janetrs::lowlevel::Janet {
                     #[inline]
                     #fun_clone
