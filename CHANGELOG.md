@@ -2,6 +2,22 @@
 
 All notable changes to the library should be put here
 
+## Unreleased
+
+- Feat: Add `JanetArray::pop_if` method
+- Feat: Add `JanetArray::push_within_capacity` method
+- Feat: Add `JanetArray::extract_if` method
+- Feat: Add `JanetArray::split_off` method
+- Feat: Add `JanetArray::swap_unchecked` method
+- Feat: Add `JanetArray::retain` and `JanetArray::retain_mut` methods
+- Feat: Add `JanetArray::get_range`, `JanetArray::get_range_mut`, `JanetArray::get_range_unchecked` and , `JanetArray::get_range_unchecked_mut` methods
+- Feat: Add `JanetArray::weak` and `JanetArray::weak_with_capacity` constructors
+- Feat: Add `JanetBuffer::push_janet_string` method
+- Feat: Add `assert_deep_eq!` macro
+- Feat: Add `assert_deep_ne!` macro
+- Refactor: Simplify `jpanic!` macro
+- Refactor: Update `syn` crate to 2.0
+
 ## 0.7.0
 
 - **BREAKING:** Refactor: Rename `JanetArgs::get_unwraped` to `JanetArgs::get_unwrapped`
