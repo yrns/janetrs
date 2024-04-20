@@ -76,3 +76,8 @@ members = ["janetrs_macros", "janetrs_version"]
 [[example]]
 name = "hello_world"
 required-features = ["amalgation"]
+
+[[example]]
+name = "janet_native_module"
+crate-type = ["cdylib", "staticlib"]
+required-features = ["amalgation"]
