@@ -15,8 +15,10 @@ All notable changes to the library should be put here
 - Feat: Add `JanetBuffer::push_janet_string` method
 - Feat: Add `assert_deep_eq!` macro
 - Feat: Add `assert_deep_ne!` macro
+- Feat: janetrs_macros 0.7.1 — Correctly report the janet C function definition line to Janet (previously it was an approximation)
 - Refactor: Simplify `jpanic!` macro
-- Refactor: Update `syn` crate to 2.0
+- Refactor: janetrs_macros 0.7.0 — Update `syn` crate to 2.0
+- Fix: janetrs_macros 0.7.1 — Fix `janet_fn` attribute macro not generating Janet docstring correctly
 
 ## 0.7.0
 
