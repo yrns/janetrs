@@ -9,6 +9,7 @@ macro_rules! err_spanned {
     };
 }
 
+#[allow(unused_macros)]
 /// Macro inspired by `anyhow::bail!` to return a compiler error with the given span.
 macro_rules! bail_spanned {
     ($span:expr => $msg:expr) => {
@@ -18,6 +19,7 @@ macro_rules! bail_spanned {
 
 /// Macro inspired by `anyhow::ensure!` to return a compiler error with the given span if
 /// the specified condition is not met.
+#[allow(unused_macros)]
 macro_rules! ensure_spanned {
     ($condition:expr, $span:expr => $msg:expr) => {
         if !($condition) {
