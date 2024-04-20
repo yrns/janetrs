@@ -473,7 +473,7 @@ mod tests {
     #[derive(Debug, PartialEq)]
     struct TestDrop(bool);
     static mut TEST_DROP: JanetAbstractType = JanetAbstractType {
-        name: b"TestDrop\0".as_ptr().cast::<i8>(),
+        name: c"TestDrop".as_ptr().cast::<i8>(),
         gc: None,
         gcmark: None,
         get: None,
@@ -521,7 +521,7 @@ mod tests {
     #[derive(Debug, PartialEq)]
     struct TestDrop2(bool);
     static mut TEST_DROP2: JanetAbstractType = JanetAbstractType {
-        name: b"TestDrop2\0".as_ptr().cast::<i8>(),
+        name: c"TestDrop2".as_ptr().cast::<i8>(),
         gc: None,
         gcmark: None,
         get: None,

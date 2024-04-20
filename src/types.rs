@@ -1965,7 +1965,7 @@ mod tests {
     fn dynamic() -> Result<(), crate::client::Error> {
         let _client = crate::client::JanetClient::init()?;
 
-        unsafe { evil_janet::janet_setdyn("test\0".as_ptr() as *const _, Janet::from(10).into()) };
+        unsafe { evil_janet::janet_setdyn(c"test".as_ptr() as *const _, Janet::from(10).into()) };
 
         assert_eq!(Some(Janet::number(10.0)), Janet::dynamic("test"));
 

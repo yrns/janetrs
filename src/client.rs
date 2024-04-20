@@ -276,7 +276,7 @@ impl JanetClient {
     ///
     ///
     /// ## TODO:
-    /// Right now the sourcePath value are hardcoded to `b"main\0"`.
+    /// Right now the sourcePath value are hardcoded to `c"main"`.
     /// Change that the Client struct holds sourcePath.
     #[inline]
     pub fn run_bytes(&self, code: impl AsRef<[u8]>) -> Result<Janet, Error> {
@@ -293,7 +293,7 @@ impl JanetClient {
                 env.raw,
                 code.as_ptr(),
                 code.len() as i32,
-                b"main\0".as_ptr() as *const i8,
+                c"main".as_ptr(),
                 &mut out.inner,
             )
         };
@@ -326,7 +326,7 @@ impl JanetClient {
     /// ```
     ///
     /// ## TODO:
-    /// Right now the sourcePath value are hardcoded to `b"main\0"`,
+    /// Right now the sourcePath value are hardcoded to `b"main"`,
     /// respectively.
     /// Change that the Client struct hold sourcePath.
     #[inline]
