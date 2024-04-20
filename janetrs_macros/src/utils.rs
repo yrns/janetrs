@@ -1,4 +1,5 @@
 use proc_macro2::Span;
+use quote::ToTokens;
 use syn::{parse::Parse, punctuated::Punctuated, spanned::Spanned, LitStr, Token};
 
 /// Macro inspired by `anyhow::anyhow!` to create a compiler error with the given span.
@@ -179,49 +180,63 @@ pub(crate) fn janet_path_checker(path: &syn::Path) -> bool {
 
 /// Get the doc string of the function item
 /// Got as a reference of [PyO3](https://github.com/PyO3/pyo3/blob/main/pyo3-macros-backend/src/utils.rs#L57) example
-pub(crate) fn get_doc(attrs: &[syn::Attribute]) -> syn::LitStr {
-    let mut doc = String::new();
-    let mut span = Span::call_site();
-    let mut separator = "";
+pub(crate) fn get_doc(attrs: &[syn::Attribute]) -> proc_macro2::TokenStream {
+    use proc_macro2::TokenStream;
+
+    let mut parts = Punctuated::<TokenStream, Token![,]>::new();
     let mut first = true;
+    let mut current_part = String::new();
 
     for attr in attrs {
         if attr.path().is_ident("doc") {
-            if let Ok(DocArgs { _eq_token, lit_str }) = attr.parse_args() {
-                if first {
-                    first = false;
-                    span = lit_str.span()
-                }
-                let d = lit_str.value();
-                doc.push_str(separator);
-                if d.starts_with(' ') {
-                    doc.push_str(&d[1..d.len()]);
+            if let Ok(nv) = attr.meta.require_name_value() {
+                if !first {
+                    current_part.push('\n');
                 } else {
-                    doc.push_str(&d);
-                };
-                separator = "\n";
+                    first = false;
+                }
+
+                if let syn::Expr::Lit(syn::ExprLit {
+                    lit: syn::Lit::Str(lit_str),
+                    ..
+                }) = &nv.value
+                {
+                    // Strip single left space from literal strings, if needed.
+                    // e.g. `/// Hello world` expands to #[doc = " Hello world"]
+                    let doc_line = lit_str.value();
+                    current_part.push_str(doc_line.strip_prefix(' ').unwrap_or(&doc_line));
+                } else {
+                    // This is probably a macro doc from Rust 1.54, e.g. #[doc = include_str!(...)]
+                    // Reset the string buffer, write that part, and then push this macro part too.
+                    parts.push(current_part.to_token_stream());
+                    current_part.clear();
+                    parts.push(nv.value.to_token_stream());
+                }
             }
         }
     }
 
-    doc.push('\0');
+    if !parts.is_empty() {
+        // Doc contained macro pieces - return as `concat!` expression
+        if !current_part.is_empty() {
+            parts.push(current_part.to_token_stream());
+        }
 
-    syn::LitStr::new(&doc, span)
-}
+        let mut tokens = TokenStream::new();
 
-struct DocArgs {
-    _eq_token: syn::Token![=],
-    lit_str:   syn::LitStr,
-}
+        syn::Ident::new("concat", Span::call_site()).to_tokens(&mut tokens);
+        syn::token::Not(Span::call_site()).to_tokens(&mut tokens);
+        syn::token::Bracket(Span::call_site()).surround(&mut tokens, |tokens| {
+            parts.to_tokens(tokens);
+            syn::token::Comma(Span::call_site()).to_tokens(tokens);
+            syn::LitStr::new("\0", Span::call_site()).to_tokens(tokens);
+        });
 
-impl syn::parse::Parse for DocArgs {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let this = Self {
-            _eq_token: input.parse()?,
-            lit_str:   input.parse()?,
-        };
-        ensure_spanned!(input.is_empty(), input.span() => "expected end of doc attribute");
-        Ok(this)
+        tokens
+    } else {
+        // Just a string doc - return directly with nul terminator
+        current_part.push('\0');
+        current_part.to_token_stream()
     }
 }
 
