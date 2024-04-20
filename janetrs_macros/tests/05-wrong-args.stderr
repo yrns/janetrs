@@ -1,5 +1,5 @@
 error: expected exactly one argument of type `&mut [janetrs::Janet]`
- --> $DIR/05-wrong-args:7:17
+ --> tests/05-wrong-args:7:17
   |
 7 | pub fn function(_args: &mut [Janet], _wrong: Janet) -> Janet {
-  |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                 ^^^^^

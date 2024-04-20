@@ -1,5 +1,5 @@
 use proc_macro2::Span;
-use syn::{parse::Parse, punctuated::Punctuated, spanned::Spanned, Token};
+use syn::{parse::Parse, punctuated::Punctuated, spanned::Spanned, LitStr, Token};
 
 /// Macro inspired by `anyhow::anyhow!` to create a compiler error with the given span.
 macro_rules! err_spanned {
@@ -33,9 +33,9 @@ pub(crate) enum ArityArgs {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Arg {
-    CheckMutRef,
-    Catch,
-    Arity(ArityArgs),
+    CheckMutRef(Span),
+    Catch(Span),
+    Arity(ArityArgs, Span),
 }
 
 pub(crate) struct Args(pub(crate) Vec<Arg>);
@@ -43,10 +43,11 @@ pub(crate) struct Args(pub(crate) Vec<Arg>);
 impl Parse for Args {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let args_span = input.cursor().token_stream().span();
-        let content: Punctuated<_, Token![,]> = input.parse_terminated(Arg::parse)?;
+        let content: Punctuated<_, _> = input.parse_terminated(Arg::parse, Token![,])?;
         if content.len() > 2 {
+            let span = content.last().map(|s| s.span()).unwrap_or(args_span);
             return Err(syn::parse::Error::new(
-                args_span,
+                span,
                 "expected a maximum of two arguments to the janet_fn proc-macro",
             ));
         }
@@ -70,11 +71,11 @@ impl Parse for Arg {
         let ident: syn::Ident = input.parse()?;
 
         if ident == "check_mut_ref" {
-            return Ok(Arg::CheckMutRef);
+            return Ok(Arg::CheckMutRef(ident.span()));
         }
 
         if ident == "catch" {
-            return Ok(Arg::Catch);
+            return Ok(Arg::Catch(ident.span()));
         }
 
         if ident == "arity" {
@@ -87,13 +88,13 @@ impl Parse for Arg {
                 syn::parenthesized!(arity_arg in content);
 
                 let num = arity_arg.parse::<syn::LitInt>()?.base10_parse::<usize>()?;
-                return Ok(Arg::Arity(ArityArgs::Fix(num)));
+                return Ok(Arg::Arity(ArityArgs::Fix(num), ident.span()));
             } else if arity_type == "range" {
                 let arity_buff;
                 let paren = syn::parenthesized!(arity_buff in content);
 
-                let arity_args: Punctuated<_, Token![,]> =
-                    arity_buff.parse_terminated(syn::LitInt::parse)?;
+                let arity_args: Punctuated<_, _> =
+                    arity_buff.parse_terminated(syn::LitInt::parse, Token![,])?;
 
                 let (min, max) = match arity_args.len() {
                     1 => (arity_args[0].base10_parse::<usize>()?, None),
@@ -103,7 +104,7 @@ impl Parse for Arg {
                     ),
                     x => {
                         return Err(Error::new(
-                            paren.span,
+                            paren.span.span(),
                             format!(
                                 "invalid number of arguments for `range`: Expected at least 1, \
                                  with max of 2 arguments, got {x}"
@@ -112,7 +113,7 @@ impl Parse for Arg {
                     },
                 };
 
-                return Ok(Arg::Arity(ArityArgs::Range(min, max)));
+                return Ok(Arg::Arity(ArityArgs::Range(min, max), ident.span()));
             } else {
                 return Err(syn::parse::Error::new(
                     arity_type.span(),
@@ -132,10 +133,20 @@ impl PartialEq for Arg {
     fn eq(&self, other: &Self) -> bool {
         #[allow(clippy::match_like_matches_macro)]
         match (self, other) {
-            (Self::Catch, Self::Catch) => true,
-            (Self::Arity(_), Self::Arity(_)) => true,
-            (Self::CheckMutRef, Self::CheckMutRef) => true,
+            (Self::Catch(_), Self::Catch(_)) => true,
+            (Self::Arity(..), Self::Arity(..)) => true,
+            (Self::CheckMutRef(_), Self::CheckMutRef(_)) => true,
             _ => false,
+        }
+    }
+}
+
+impl Arg {
+    pub(crate) fn span(&self) -> Span {
+        match self {
+            Arg::CheckMutRef(s) => *s,
+            Arg::Catch(s) => *s,
+            Arg::Arity(_, s) => *s,
         }
     }
 }
@@ -175,8 +186,8 @@ pub(crate) fn get_doc(attrs: &[syn::Attribute]) -> syn::LitStr {
     let mut first = true;
 
     for attr in attrs {
-        if attr.path.is_ident("doc") {
-            if let Ok(DocArgs { _eq_token, lit_str }) = syn::parse2(attr.tokens.clone()) {
+        if attr.path().is_ident("doc") {
+            if let Ok(DocArgs { _eq_token, lit_str }) = attr.parse_args() {
                 if first {
                     first = false;
                     span = lit_str.span()
@@ -253,7 +264,7 @@ impl Parse for ModArgs {
         let mut fn_file_idents = Vec::with_capacity(10);
         let mut fn_doc_lits = Vec::with_capacity(10);
 
-        let fn_infos: Punctuated<_, Token![,]> = input.parse_terminated(JanetFn::parse)?;
+        let fn_infos: Punctuated<_, _> = input.parse_terminated(JanetFn::parse, Token![,])?;
 
         for JanetFn {
             fn_name,
@@ -351,6 +362,50 @@ impl Parse for JanetFn {
             fn_line_ident,
             fn_file_ident,
             fn_doc_lit,
+        })
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct JanetVersionArgs {
+    pub(crate) min_version: LitStr,
+    pub(crate) max_version: Option<LitStr>,
+}
+
+impl Parse for JanetVersionArgs {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let args: Punctuated<LitStr, Token![,]> = Punctuated::parse_terminated(input)?;
+        let args_span = args.span();
+
+        if args.len() > 2 {
+            let span = args
+                .iter()
+                .map(|a| a.span())
+                .reduce(|a, other| a.join(other).unwrap_or(other))
+                .unwrap();
+            return Err(err_spanned!(
+                span =>
+                "expected at max two arguments to the janet_version proc-macro"
+            ));
+        }
+
+        let mut args_iter = args.into_iter();
+
+        let min_version = match args_iter.next() {
+            Some(min) => min,
+            None => {
+                return Err(err_spanned!(
+                    args_span =>
+                    "expected at least one argument to the janet_version proc-macro"
+                ));
+            },
+        };
+
+        let max_version = args_iter.next();
+
+        Ok(Self {
+            min_version,
+            max_version,
         })
     }
 }

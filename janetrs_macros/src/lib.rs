@@ -6,7 +6,7 @@ use syn::{parse_macro_input, spanned::Spanned};
 use janetrs_version::JanetVersion;
 
 mod utils;
-use utils::{janet_path_checker, Arg, Args, ArityArgs};
+use utils::{janet_path_checker, Arg, Args, ArityArgs, JanetVersionArgs};
 
 use crate::utils::ModArgs;
 
@@ -44,7 +44,8 @@ use crate::utils::ModArgs;
 /// - `#[janet_fn(arity(<...>), check_mut_ref)]` Combining both
 #[proc_macro_attribute]
 pub fn janet_fn(
-    args: proc_macro::TokenStream, input: proc_macro::TokenStream,
+    args: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let func = parse_macro_input!(input as syn::Item);
 
@@ -56,11 +57,11 @@ pub fn janet_fn(
         .0
         .iter()
         .map(|arg| match arg {
-            Arg::Catch => {
+            Arg::Catch(_) => {
                 is_catch = true;
                 quote! {}
             },
-            Arg::CheckMutRef => quote! {
+            Arg::CheckMutRef(_) => quote! {
                 if (1..args.len()).any(|i| {
                     let a = args[i - 1];
                     matches!(
@@ -80,13 +81,13 @@ pub fn janet_fn(
                     ::janetrs::jpanic!("Received two mutable references as arguments");
                 }
             },
-            Arg::Arity(ArityArgs::Fix(n)) => quote! {
+            Arg::Arity(ArityArgs::Fix(n), _) => quote! {
                 ::janetrs::util::check_fix_arity(args, #n);
             },
-            Arg::Arity(ArityArgs::Range(min, None)) => quote! {
+            Arg::Arity(ArityArgs::Range(min, None), _) => quote! {
                 ::janetrs::util::check_range_arity(args, #min, None);
             },
-            Arg::Arity(ArityArgs::Range(min, Some(max))) => quote! {
+            Arg::Arity(ArityArgs::Range(min, Some(max)), _) => quote! {
                 ::janetrs::util::check_range_arity(args, #min, Some(#max));
             },
         })
@@ -221,37 +222,14 @@ const CURRENT_JANET: JanetVersion = JanetVersion::current();
 /// That means that the range is open in the maximum version: [MIN_VERSION, MAX_VERSION).
 #[proc_macro_attribute]
 pub fn janet_version(
-    args: proc_macro::TokenStream, input: proc_macro::TokenStream,
+    args: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    let global_span = proc_macro2::TokenStream::from(args.clone()).span();
-    let args = parse_macro_input!(args as syn::AttributeArgs);
-    // let input = parse_macro_input!(input as syn::Item);
+    let args = parse_macro_input!(args as JanetVersionArgs);
 
-    if args.len() > 2 {
-        return quote_spanned!{global_span => compile_error!("expected at max two argument to the janet_version proc-macro");}
-            .into();
-    }
-
-    if args.is_empty() {
-        return quote_spanned!{global_span => compile_error!("expected at least one argument to the janet_version proc-macro");}
-            .into();
-    }
-
-    let min_lit = if let syn::NestedMeta::Lit(syn::Lit::Str(ref lit)) = args[0] {
-        lit
-    } else {
-        return quote_spanned! {args[0].span() => compile_error!("the argument must be a string literal");}.into();
-    };
-
-    let max_lit = match args.get(1) {
-        Some(syn::NestedMeta::Lit(syn::Lit::Str(ref lit))) => Some(lit),
-        None => None,
-        _ => return quote_spanned! {args[1].span() => compile_error!("the argument must be a string literal");}.into()
-    };
-
-    match parse_args(&min_lit.value()) {
+    match parse_args(&args.min_version.value()) {
         Ok(req_min_ver) => {
-            if let Some(max_lit) = max_lit {
+            if let Some(max_lit) = args.max_version {
                 match parse_args(&max_lit.value()) {
                     Ok(req_max_ver) => {
                         if req_min_ver <= CURRENT_JANET && req_max_ver > CURRENT_JANET {
@@ -273,7 +251,7 @@ pub fn janet_version(
         },
         Err(err) => {
             let err = format!("invalid string literal: {err}");
-            (quote_spanned! {min_lit.span() => compile_error!(#err);}).into()
+            (quote_spanned! {args.min_version.span() => compile_error!(#err);}).into()
         },
     }
 }
@@ -304,7 +282,8 @@ fn parse_args(arg: &str) -> Result<JanetVersion, String> {
 /// That means that the range is open in the maximum version: [MIN_VERSION, MAX_VERSION).
 #[proc_macro_attribute]
 pub fn cjvg(
-    args: proc_macro::TokenStream, input: proc_macro::TokenStream,
+    args: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     janet_version(args, input)
 }
@@ -469,34 +448,11 @@ pub fn declare_janet_mod(input: proc_macro::TokenStream) -> proc_macro::TokenStr
 #[proc_macro]
 pub fn check_janet_version(args: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let global_span = proc_macro2::TokenStream::from(args.clone()).span();
-    let args = parse_macro_input!(args as syn::AttributeArgs);
-    // let input = parse_macro_input!(input as syn::Item);
+    let args = parse_macro_input!(args as JanetVersionArgs);
 
-    if args.len() > 2 {
-        return quote_spanned!{global_span => compile_error!("expected at max two argument to the janet_version proc-macro");}
-            .into();
-    }
-
-    if args.is_empty() {
-        return quote_spanned!{global_span => compile_error!("expected at least one argument to the janet_version proc-macro");}
-            .into();
-    }
-
-    let min_lit = if let syn::NestedMeta::Lit(syn::Lit::Str(ref lit)) = args[0] {
-        lit
-    } else {
-        return quote_spanned! {args[0].span() => compile_error!("the argument must be a string literal");}.into();
-    };
-
-    let max_lit = match args.get(1) {
-        Some(syn::NestedMeta::Lit(syn::Lit::Str(ref lit))) => Some(lit),
-        None => None,
-        _ => return quote_spanned! {args[1].span() => compile_error!("the argument must be a string literal");}.into()
-    };
-
-    match parse_args(&min_lit.value()) {
+    match parse_args(&args.min_version.value()) {
         Ok(req_min_ver) => {
-            if let Some(max_lit) = max_lit {
+            if let Some(max_lit) = args.max_version {
                 match parse_args(&max_lit.value()) {
                     Ok(req_max_ver) => {
                         if req_min_ver <= CURRENT_JANET && req_max_ver > CURRENT_JANET {
@@ -526,7 +482,7 @@ pub fn check_janet_version(args: proc_macro::TokenStream) -> proc_macro::TokenSt
         },
         Err(err) => {
             let err = format!("invalid string literal: {err}");
-            (quote_spanned! {min_lit.span() => compile_error!(#err);}).into()
+            (quote_spanned! {args.min_version.span() => compile_error!(#err);}).into()
         },
     }
 }

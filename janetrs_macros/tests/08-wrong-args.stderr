@@ -1,41 +1,41 @@
 error: invalid argument for the macro. Expected `arity` or `check_mut_ref`
- --> $DIR/08-wrong-args:4:12
+ --> tests/08-wrong-args:4:12
   |
 4 | #[janet_fn(a)]
   |            ^
 
 error: expected integer literal
-  --> $DIR/08-wrong-args:10:22
+  --> tests/08-wrong-args:10:22
    |
 10 | #[janet_fn(arity(fix("")))]
    |                      ^^
 
 error: unexpected end of input, expected parentheses
-  --> $DIR/08-wrong-args:15:21
+  --> tests/08-wrong-args:15:21
    |
 15 | #[janet_fn(arity(fix))]
    |                     ^
 
 error: unexpected end of input, expected integer literal
-  --> $DIR/08-wrong-args:20:22
+  --> tests/08-wrong-args:20:22
    |
 20 | #[janet_fn(arity(fix()))]
    |                      ^
 
 error: invalid number of arguments for `range`: Expected at least 1, with max of 2 arguments, got 0
-  --> $DIR/08-wrong-args:25:23
+  --> tests/08-wrong-args:25:23
    |
 25 | #[janet_fn(arity(range()))]
    |                       ^^
 
 error: repeated argument kind: There must be only one argument of each kind, that is, only one of `arity` or `check_mut_ref`
-  --> $DIR/08-wrong-args:30:12
+  --> tests/08-wrong-args:30:12
    |
 30 | #[janet_fn(check_mut_ref, check_mut_ref)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^
 
 error: expected a maximum of two arguments to the janet_fn proc-macro
-  --> $DIR/08-wrong-args:35:12
+  --> tests/08-wrong-args:35:42
    |
 35 | #[janet_fn(arity(fix(1)), check_mut_ref, arity(fix(2)))]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^^^
