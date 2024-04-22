@@ -1840,6 +1840,33 @@ pub trait JanetArgs {
             .unwrap_or(default)
     }
 
+    /// Get the argument at the `index` position and convert to `T`, if that fails,
+    /// returns the [`Default::default`] value for `T`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use janetrs::{janet_fn, Janet, JanetArgs};
+    ///
+    /// // Lets say it's a function that if receives an argument, if is not the wanted type, it
+    /// // defaults to the given value.
+    /// #[janet_fn(arity(range(0, 1)))]
+    /// fn my_func(args: &mut [Janet]) -> Janet {
+    ///     let my_flag = args.get_or_default(0);
+    ///
+    ///     // Rest of the function
+    ///     todo!()
+    /// }
+    /// ```
+    fn get_or_default<T>(&self, index: usize) -> T
+    where
+        T: TryFrom<Janet> + Default,
+    {
+        self.get_value(index)
+            .and_then(|val| T::try_from(val).ok())
+            .unwrap_or_default()
+    }
+
     /// Get the argument at the `index` position, if it's Janet nil, returns the `default`
     /// value, but janet panics if the the value is different than nil and fail to convert
     /// to `T`.
