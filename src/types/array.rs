@@ -229,7 +229,7 @@ impl<'data> JanetArray<'data> {
     /// # Examples
     ///
     /// ```
-    /// use janetrs::array;
+    /// use janetrs::{array, assert_deep_eq};
     /// # let _client = janetrs::client::JanetClient::init().unwrap();
     ///
     /// let mut arr = array![1, 2, 3];
@@ -745,7 +745,7 @@ impl<'data> JanetArray<'data> {
     /// # Examples
     ///
     /// ```
-    /// use janetrs::{array, Janet};
+    /// use janetrs::{array, assert_deep_eq, Janet};
     /// # let _client = janetrs::client::JanetClient::init().unwrap();
     ///
     /// let mut array = array![1, 2, 3, 4];
@@ -763,7 +763,7 @@ impl<'data> JanetArray<'data> {
     ///     }
     /// });
     ///
-    /// assert!(array.deep_eq(&array![2, 3, 4]));
+    /// assert_deep_eq!(array, array![2, 3, 4]);
     /// ```
     pub fn retain_mut<F>(&mut self, mut f: F)
     where F: FnMut(&mut Janet) -> bool {
@@ -2606,7 +2606,7 @@ impl<'data> JanetArray<'data> {
     /// Using this method is equivalent to the following code:
     ///
     /// ```
-    /// use janetrs::{array, Janet};
+    /// use janetrs::{array, assert_deep_eq, Janet};
     /// # let _client = janetrs::client::JanetClient::init().unwrap();
     /// # let some_predicate = |x: &mut Janet| {
     /// #     x.try_unwrap::<i32>()
@@ -2637,7 +2637,7 @@ impl<'data> JanetArray<'data> {
     /// Splitting an array into evens and odds, reusing the original allocation:
     ///
     /// ```
-    /// use janetrs::{array, Janet, JanetArray};
+    /// use janetrs::{array, assert_deep_eq, Janet, JanetArray};
     /// # let _client = janetrs::client::JanetClient::init().unwrap();
     ///
     /// let mut numbers = array![1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15];
@@ -3206,7 +3206,7 @@ impl FusedIterator for IntoIter<'_> {}
 ///
 /// ```
 /// use janetrs::{array, array::ExtractIf, Janet};
-/// let _client = crate::client::JanetClient::init()?;
+/// # let _client = janetrs::client::JanetClient::init().unwrap();
 ///
 /// let mut array = array![0, 1, 2];
 /// let iter: ExtractIf<'_, '_, _> =
