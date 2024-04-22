@@ -1781,6 +1781,11 @@ string_impl_partial_ord!(JanetKeyword<'_>, &'a bstr::BString);
 /// Trait that only exist to extend methods over `[Janet]` so it's easier to get
 /// [`janet_fn`](crate::janet_fn) args.
 pub trait JanetArgs {
+    /// Get the argument at the `index` position.
+    fn get_value(&self, index: usize) -> Option<Janet>;
+
+    /// Get the argument at the `index` position as the [`TaggedJanet`] type.
+    fn get_tagged(&self, index: usize) -> Option<TaggedJanet>;
     /// Get the argument at the `index` position and tries to convert to `T`.
     fn get_unwrapped<T: TryFrom<Janet>>(&self, index: usize) -> Result<T, T::Error>;
 
@@ -1890,6 +1895,14 @@ impl JanetArgs for [Janet] {
             }),
             None => crate::jpanic!("bad slot #{}, there is no value in this slot", index),
         }
+    }
+
+    fn get_value(&self, index: usize) -> Option<Janet> {
+        self.get(index).copied()
+    }
+
+    fn get_tagged(&self, index: usize) -> Option<TaggedJanet> {
+        self.get(index).map(|j| j.unwrap())
     }
 }
 
