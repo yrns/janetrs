@@ -1297,7 +1297,9 @@ impl<'data> JanetString<'data> {
     /// ```
     #[inline]
     pub fn find_iter<'a, 'b, B>(&'a self, needle: &'b B) -> Find<'a, 'b>
-    where B: ?Sized + AsRef<[u8]> {
+    where
+        B: ?Sized + AsRef<[u8]>,
+    {
         self.as_bytes().find_iter(needle)
     }
 
@@ -1342,7 +1344,9 @@ impl<'data> JanetString<'data> {
     /// ```
     #[inline]
     pub fn rfind_iter<'a, 'b, B>(&'a self, needle: &'b B) -> FindReverse<'a, 'b>
-    where B: ?Sized + AsRef<[u8]> {
+    where
+        B: ?Sized + AsRef<[u8]>,
+    {
         self.as_bytes().rfind_iter(needle)
     }
 
@@ -1491,7 +1495,9 @@ impl<'data> JanetString<'data> {
     /// ```
     #[inline]
     pub fn fields_with<F>(&self, f: F) -> FieldsWith<F>
-    where F: FnMut(char) -> bool {
+    where
+        F: FnMut(char) -> bool,
+    {
         self.as_bytes().fields_with(f)
     }
 
@@ -1841,7 +1847,9 @@ impl<'data> JanetString<'data> {
     /// [`fields`](#method.fields) instead.
     #[inline]
     pub fn split<'a, 'b, S>(&'a self, splitter: &'b S) -> Split<'a, 'b>
-    where S: ?Sized + AsRef<[u8]> {
+    where
+        S: ?Sized + AsRef<[u8]>,
+    {
         self.as_bytes().split_str(splitter)
     }
 
@@ -1979,7 +1987,9 @@ impl<'data> JanetString<'data> {
     /// It does *not* give you `["a", "b", "c"]`.
     #[inline]
     pub fn rsplit<'a, 'b, S>(&'a self, splitter: &'b S) -> SplitReverse<'a, 'b>
-    where S: ?Sized + AsRef<[u8]> {
+    where
+        S: ?Sized + AsRef<[u8]>,
+    {
         self.as_bytes().rsplit_str(splitter)
     }
 
@@ -2028,7 +2038,9 @@ impl<'data> JanetString<'data> {
     /// ```
     #[inline]
     pub fn splitn<'a, 'b, S>(&'a self, limit: usize, splitter: &'b S) -> SplitN<'a, 'b>
-    where S: ?Sized + AsRef<[u8]> {
+    where
+        S: ?Sized + AsRef<[u8]>,
+    {
         self.as_bytes().splitn_str(limit, splitter)
     }
 
@@ -2077,7 +2089,9 @@ impl<'data> JanetString<'data> {
     /// ```
     #[inline]
     pub fn rsplitn<'a, 'b, S>(&'a self, limit: usize, splitter: &'b S) -> SplitNReverse<'a, 'b>
-    where S: ?Sized + AsRef<[u8]> {
+    where
+        S: ?Sized + AsRef<[u8]>,
+    {
         self.as_bytes().rsplitn_str(limit, splitter)
     }
 

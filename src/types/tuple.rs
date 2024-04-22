@@ -587,7 +587,9 @@ impl<'data> JanetTuple<'data> {
     /// ```
     #[inline]
     pub fn binary_search_by<'a, F>(&'a self, f: F) -> Result<usize, usize>
-    where F: FnMut(&'a Janet) -> Ordering {
+    where
+        F: FnMut(&'a Janet) -> Ordering,
+    {
         self.as_ref().binary_search_by(f)
     }
 
@@ -876,7 +878,9 @@ impl<'data> JanetTuple<'data> {
     /// ```
     #[inline]
     pub fn split<F>(&self, pred: F) -> Split<'_, F>
-    where F: FnMut(&Janet) -> bool {
+    where
+        F: FnMut(&Janet) -> bool,
+    {
         self.as_ref().split(pred)
     }
 
@@ -921,7 +925,9 @@ impl<'data> JanetTuple<'data> {
     /// ```
     #[inline]
     pub fn rsplit<F>(&self, pred: F) -> RSplit<'_, F>
-    where F: FnMut(&Janet) -> bool {
+    where
+        F: FnMut(&Janet) -> bool,
+    {
         self.as_ref().rsplit(pred)
     }
 
@@ -952,7 +958,9 @@ impl<'data> JanetTuple<'data> {
     /// ```
     #[inline]
     pub fn splitn<F>(&self, n: usize, pred: F) -> SplitN<'_, F>
-    where F: FnMut(&Janet) -> bool {
+    where
+        F: FnMut(&Janet) -> bool,
+    {
         self.as_ref().splitn(n, pred)
     }
 
@@ -984,7 +992,9 @@ impl<'data> JanetTuple<'data> {
     /// ```
     #[inline]
     pub fn rsplitn<F>(&self, n: usize, pred: F) -> RSplitN<'_, F>
-    where F: FnMut(&Janet) -> bool {
+    where
+        F: FnMut(&Janet) -> bool,
+    {
         self.as_ref().rsplitn(n, pred)
     }
 

@@ -398,7 +398,8 @@ impl IsJanetAbstract for u64 {
 }
 
 impl<A> IsJanetAbstract for ManuallyDrop<A>
-where A: IsJanetAbstract
+where
+    A: IsJanetAbstract,
 {
     type Get = ManuallyDrop<A::Get>;
 

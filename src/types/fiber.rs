@@ -234,7 +234,9 @@ impl<'data> JanetFiber<'data> {
     /// [`exec`]: #method.exec
     #[inline]
     pub fn exec_with<'a, F>(&'a mut self, f: F) -> Exec<'a, 'data>
-    where F: FnOnce() -> Janet {
+    where
+        F: FnOnce() -> Janet,
+    {
         Exec {
             fiber: self,
             input: f(),

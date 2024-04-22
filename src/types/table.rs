@@ -1432,7 +1432,9 @@ impl<'a, 'data> Entry<'a, 'data> {
     #[inline]
     #[must_use]
     pub fn and_modify<F>(self, f: F) -> Self
-    where F: FnOnce(&mut Janet) {
+    where
+        F: FnOnce(&mut Janet),
+    {
         match self {
             Self::Occupied(mut entry) => {
                 f(entry.get_mut());
@@ -1524,7 +1526,9 @@ impl<'a, 'data> Entry<'a, 'data> {
     /// ```
     #[inline]
     pub fn or_insert_with<F>(self, default: F) -> &'a mut Janet
-    where F: FnOnce() -> Janet {
+    where
+        F: FnOnce() -> Janet,
+    {
         match self {
             Self::Occupied(entry) => entry.into_mut(),
             Self::Vacant(entry) => entry.insert(default()),
@@ -1549,7 +1553,9 @@ impl<'a, 'data> Entry<'a, 'data> {
     /// ```
     #[inline]
     pub fn or_insert_with_key<F>(self, default: F) -> &'a mut Janet
-    where F: FnOnce(&Janet) -> Janet {
+    where
+        F: FnOnce(&Janet) -> Janet,
+    {
         match self {
             Self::Occupied(entry) => entry.into_mut(),
             Self::Vacant(entry) => {

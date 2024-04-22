@@ -457,7 +457,9 @@ impl<'data> JanetArray<'data> {
     /// assert_eq!(array.pop_if(pred), None);
     /// ```
     pub fn pop_if<F>(&mut self, f: F) -> Option<Janet>
-    where F: FnOnce(&mut Janet) -> bool {
+    where
+        F: FnOnce(&mut Janet) -> bool,
+    {
         let last = self.last_mut()?;
         if f(last) { self.pop() } else { None }
     }
@@ -568,7 +570,9 @@ impl<'data> JanetArray<'data> {
     #[inline]
     #[must_use]
     pub fn get_range<R>(&self, range: R) -> Option<&[Janet]>
-    where R: RangeBounds<i32> {
+    where
+        R: RangeBounds<i32>,
+    {
         into_range(self.len(), (range.start_bound(), range.end_bound()))
             .and_then(|range| self.get_r(range))
     }
@@ -576,7 +580,9 @@ impl<'data> JanetArray<'data> {
     #[inline]
     #[must_use]
     pub fn get_range_mut<R>(&mut self, range: R) -> Option<&mut [Janet]>
-    where R: RangeBounds<i32> {
+    where
+        R: RangeBounds<i32>,
+    {
         into_range(self.len(), (range.start_bound(), range.end_bound()))
             .and_then(|range| self.get_r_mut(range))
     }
@@ -584,7 +590,9 @@ impl<'data> JanetArray<'data> {
     /// # Safety
     #[inline]
     pub unsafe fn get_range_unchecked<R>(&self, range: R) -> &[Janet]
-    where R: RangeBounds<i32> {
+    where
+        R: RangeBounds<i32>,
+    {
         self.get_r_unchecked(into_range_unchecked(
             self.len(),
             (range.start_bound(), range.end_bound()),
@@ -594,7 +602,9 @@ impl<'data> JanetArray<'data> {
     /// # Safety
     #[inline]
     pub unsafe fn get_range_unchecked_mut<R>(&mut self, range: R) -> &mut [Janet]
-    where R: RangeBounds<i32> {
+    where
+        R: RangeBounds<i32>,
+    {
         self.get_r_unchecked_mut(into_range_unchecked(
             self.len(),
             (range.start_bound(), range.end_bound()),
@@ -731,7 +741,9 @@ impl<'data> JanetArray<'data> {
     /// assert_eq!(vec, [2, 3, 5]);
     /// ```
     pub fn retain<F>(&mut self, mut f: F)
-    where F: FnMut(&Janet) -> bool {
+    where
+        F: FnMut(&Janet) -> bool,
+    {
         self.retain_mut(|elem| f(elem));
     }
 
@@ -766,7 +778,9 @@ impl<'data> JanetArray<'data> {
     /// assert_deep_eq!(array, array![2, 3, 4]);
     /// ```
     pub fn retain_mut<F>(&mut self, mut f: F)
-    where F: FnMut(&mut Janet) -> bool {
+    where
+        F: FnMut(&mut Janet) -> bool,
+    {
         // Array: [Kept, Kept, Hole, Hole, Hole, Hole, Unchecked, Unchecked]
         //        |<-              processed len   ->| ^- next to check
         //                    |<-  deleted cnt     ->|
@@ -806,7 +820,9 @@ impl<'data> JanetArray<'data> {
 
         fn process_loop<F, const DELETED: bool>(
             original_len: usize, f: &mut F, g: &mut BackshiftOnDrop<'_, '_>,
-        ) where F: FnMut(&mut Janet) -> bool {
+        ) where
+            F: FnMut(&mut Janet) -> bool,
+        {
             while g.processed_len != original_len {
                 // SAFETY: Unchecked element must be valid.
                 let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.processed_len) };
@@ -1499,7 +1515,9 @@ impl<'data> JanetArray<'data> {
     /// ```
     #[inline]
     pub fn binary_search_by<'a, F>(&'a self, f: F) -> Result<usize, usize>
-    where F: FnMut(&'a Janet) -> Ordering {
+    where
+        F: FnMut(&'a Janet) -> Ordering,
+    {
         self.as_ref().binary_search_by(f)
     }
 
@@ -1577,7 +1595,9 @@ impl<'data> JanetArray<'data> {
     /// ```
     #[inline]
     pub fn dedup_by_key<F>(&mut self, mut key: F)
-    where F: FnMut(&mut Janet) -> Janet {
+    where
+        F: FnMut(&mut Janet) -> Janet,
+    {
         self.dedup_by(|a, b| key(a) == key(b))
     }
 
@@ -1603,7 +1623,9 @@ impl<'data> JanetArray<'data> {
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn dedup_by<F>(&mut self, mut same_bucket: F)
-    where F: FnMut(&mut Janet, &mut Janet) -> bool {
+    where
+        F: FnMut(&mut Janet, &mut Janet) -> bool,
+    {
         let len = self.len() as usize;
         if len <= 1 {
             return;
@@ -1732,7 +1754,9 @@ impl<'data> JanetArray<'data> {
     /// ```
     #[inline]
     pub fn sort_by<F>(&mut self, compare: F)
-    where F: FnMut(&Janet, &Janet) -> Ordering {
+    where
+        F: FnMut(&Janet, &Janet) -> Ordering,
+    {
         self.as_mut().sort_by(compare)
     }
 
@@ -1858,7 +1882,9 @@ impl<'data> JanetArray<'data> {
     /// [pdqsort]: https://github.com/orlp/pdqsort
     #[inline]
     pub fn sort_unstable_by<F>(&mut self, compare: F)
-    where F: FnMut(&Janet, &Janet) -> Ordering {
+    where
+        F: FnMut(&Janet, &Janet) -> Ordering,
+    {
         self.as_mut().sort_unstable_by(compare)
     }
 
@@ -2367,7 +2393,9 @@ impl<'data> JanetArray<'data> {
     /// ```
     #[inline]
     pub fn split<F>(&self, pred: F) -> Split<'_, F>
-    where F: FnMut(&Janet) -> bool {
+    where
+        F: FnMut(&Janet) -> bool,
+    {
         self.as_ref().split(pred)
     }
 
@@ -2392,7 +2420,9 @@ impl<'data> JanetArray<'data> {
     /// ```
     #[inline]
     pub fn split_mut<F>(&mut self, pred: F) -> SplitMut<'_, F>
-    where F: FnMut(&Janet) -> bool {
+    where
+        F: FnMut(&Janet) -> bool,
+    {
         self.as_mut().split_mut(pred)
     }
 
@@ -2437,7 +2467,9 @@ impl<'data> JanetArray<'data> {
     /// ```
     #[inline]
     pub fn rsplit<F>(&self, pred: F) -> RSplit<'_, F>
-    where F: FnMut(&Janet) -> bool {
+    where
+        F: FnMut(&Janet) -> bool,
+    {
         self.as_ref().rsplit(pred)
     }
 
@@ -2465,7 +2497,9 @@ impl<'data> JanetArray<'data> {
     /// ```
     #[inline]
     pub fn rsplit_mut<F>(&mut self, pred: F) -> RSplitMut<'_, F>
-    where F: FnMut(&Janet) -> bool {
+    where
+        F: FnMut(&Janet) -> bool,
+    {
         self.as_mut().rsplit_mut(pred)
     }
 
@@ -2496,7 +2530,9 @@ impl<'data> JanetArray<'data> {
     /// ```
     #[inline]
     pub fn splitn<F>(&self, n: usize, pred: F) -> SplitN<'_, F>
-    where F: FnMut(&Janet) -> bool {
+    where
+        F: FnMut(&Janet) -> bool,
+    {
         self.as_ref().splitn(n, pred)
     }
 
@@ -2525,7 +2561,9 @@ impl<'data> JanetArray<'data> {
     /// ```
     #[inline]
     pub fn splitn_mut<F>(&mut self, n: usize, pred: F) -> SplitNMut<'_, F>
-    where F: FnMut(&Janet) -> bool {
+    where
+        F: FnMut(&Janet) -> bool,
+    {
         self.as_mut().splitn_mut(n, pred)
     }
 
@@ -2557,7 +2595,9 @@ impl<'data> JanetArray<'data> {
     /// ```
     #[inline]
     pub fn rsplitn<F>(&self, n: usize, pred: F) -> RSplitN<'_, F>
-    where F: FnMut(&Janet) -> bool {
+    where
+        F: FnMut(&Janet) -> bool,
+    {
         self.as_ref().rsplitn(n, pred)
     }
 
@@ -2587,7 +2627,9 @@ impl<'data> JanetArray<'data> {
     /// ```
     #[inline]
     pub fn rsplitn_mut<F>(&mut self, n: usize, pred: F) -> RSplitNMut<'_, F>
-    where F: FnMut(&Janet) -> bool {
+    where
+        F: FnMut(&Janet) -> bool,
+    {
         self.as_mut().rsplitn_mut(n, pred)
     }
 
@@ -2651,7 +2693,9 @@ impl<'data> JanetArray<'data> {
     /// assert_deep_eq!(odds, array![1, 3, 5, 9, 11, 13, 15]);
     /// ```
     pub fn extract_if<F>(&mut self, filter: F) -> ExtractIf<'_, 'data, F>
-    where F: FnMut(&mut Janet) -> bool {
+    where
+        F: FnMut(&mut Janet) -> bool,
+    {
         let old_len = self.len() as usize;
         ExtractIf {
             arr: self,
@@ -3215,7 +3259,8 @@ impl FusedIterator for IntoIter<'_> {}
 #[derive(Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ExtractIf<'a, 'data, F>
-where F: FnMut(&mut Janet) -> bool
+where
+    F: FnMut(&mut Janet) -> bool,
 {
     arr:     &'a mut JanetArray<'data>,
     idx:     usize,
@@ -3225,7 +3270,8 @@ where F: FnMut(&mut Janet) -> bool
 }
 
 impl<F> Iterator for ExtractIf<'_, '_, F>
-where F: FnMut(&mut Janet) -> bool
+where
+    F: FnMut(&mut Janet) -> bool,
 {
     type Item = Janet;
 
@@ -3261,7 +3307,8 @@ where F: FnMut(&mut Janet) -> bool
 }
 
 impl<F> Drop for ExtractIf<'_, '_, F>
-where F: FnMut(&mut Janet) -> bool
+where
+    F: FnMut(&mut Janet) -> bool,
 {
     fn drop(&mut self) {
         unsafe {

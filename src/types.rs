@@ -479,7 +479,9 @@ impl Janet {
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn unwrap_or_default<T>(self) -> T
-    where T: TryFrom<Self> + Default {
+    where
+        T: TryFrom<Self> + Default,
+    {
         T::try_from(self).unwrap_or_default()
     }
 
@@ -1804,7 +1806,10 @@ pub trait JanetArgs {
     ///     todo!()
     /// }
     /// ```
-    fn try_get<T: TryFrom<Janet>>(&self, index: usize) -> Result<T, T::Error> {
+    fn try_get<T>(&self, index: usize) -> Result<T, T::Error>
+    where
+        T: TryFrom<Janet>,
+    {
         T::try_from(self.get_value(index).unwrap_or(Janet::nil()))
     }
 
@@ -1826,7 +1831,10 @@ pub trait JanetArgs {
     ///     todo!()
     /// }
     /// ```
-    fn get_or<T: TryFrom<Janet>>(&self, index: usize, default: T) -> T {
+    fn get_or<T>(&self, index: usize, default: T) -> T
+    where
+        T: TryFrom<Janet>,
+    {
         self.get_value(index)
             .and_then(|val| T::try_from(val).ok())
             .unwrap_or(default)
@@ -1854,7 +1862,10 @@ pub trait JanetArgs {
     ///     todo!()
     /// }
     /// ```
-    fn get_opt<T: TryFrom<Janet> + JanetTypeName>(&self, index: usize, default: T) -> T {
+    fn get_opt<T>(&self, index: usize, default: T) -> T
+    where
+        T: TryFrom<Janet> + JanetTypeName,
+    {
         let val = self.get_value(index).unwrap_or_else(Janet::nil);
         if val.is_nil() {
             return default;
@@ -1890,7 +1901,10 @@ pub trait JanetArgs {
     ///     todo!()
     /// }
     /// ```
-    fn get_or_panic<T: TryFrom<Janet> + JanetTypeName>(&self, index: usize) -> T {
+    fn get_or_panic<T>(&self, index: usize) -> T
+    where
+        T: TryFrom<Janet> + JanetTypeName,
+    {
         match self.get_value(index) {
             Some(val) => T::try_from(val).unwrap_or_else(|_| {
                 crate::jpanic!(
