@@ -1804,7 +1804,9 @@ pub trait JanetArgs {
     ///     todo!()
     /// }
     /// ```
-    fn try_get<T: TryFrom<Janet>>(&self, index: usize) -> Result<T, T::Error>;
+    fn try_get<T: TryFrom<Janet>>(&self, index: usize) -> Result<T, T::Error> {
+        T::try_from(self.get_value(index).unwrap_or(Janet::nil()))
+    }
 
     /// Get the argument at the `index` position and convert to `T`, if that fails,
     /// returns the `default` value.
@@ -1824,7 +1826,11 @@ pub trait JanetArgs {
     ///     todo!()
     /// }
     /// ```
-    fn get_or<T: TryFrom<Janet>>(&self, index: usize, default: T) -> T;
+    fn get_or<T: TryFrom<Janet>>(&self, index: usize, default: T) -> T {
+        self.get_value(index)
+            .and_then(|val| T::try_from(val).ok())
+            .unwrap_or(default)
+    }
 
     /// Get the argument at the `index` position, if it's Janet nil, returns the `default`
     /// value, but janet panics if the the value is different than nil and fail to convert
@@ -1848,7 +1854,22 @@ pub trait JanetArgs {
     ///     todo!()
     /// }
     /// ```
-    fn get_opt<T: TryFrom<Janet> + JanetTypeName>(&self, index: usize, default: T) -> T;
+    fn get_opt<T: TryFrom<Janet> + JanetTypeName>(&self, index: usize, default: T) -> T {
+        let val = self.get_value(index).unwrap_or_else(Janet::nil);
+        if val.is_nil() {
+            return default;
+        }
+
+        match T::try_from(val) {
+            Ok(x) => x,
+            Err(_) => crate::jpanic!(
+                "bad slot #{}, expected {}, got {}",
+                index,
+                T::name(),
+                val.kind()
+            ),
+        }
+    }
 
     /// Get the argument at the `index` position and convert to `T`, if that fails, it
     /// janet panics.
@@ -1869,40 +1890,9 @@ pub trait JanetArgs {
     ///     todo!()
     /// }
     /// ```
-    fn get_or_panic<T: TryFrom<Janet> + JanetTypeName>(&self, index: usize) -> T;
-}
-
-impl JanetArgs for [Janet] {
-    fn try_get<T: TryFrom<Janet>>(&self, index: usize) -> Result<T, T::Error> {
-        T::try_from(*self.get(index).unwrap_or(&Janet::nil()))
-    }
-
-    fn get_or<T: TryFrom<Janet>>(&self, index: usize, default: T) -> T {
-        self.get(index)
-            .and_then(|val| T::try_from(*val).ok())
-            .unwrap_or(default)
-    }
-
-    fn get_opt<T: TryFrom<Janet> + JanetTypeName>(&self, index: usize, default: T) -> T {
-        let val = self.get(index).copied().unwrap_or_else(Janet::nil);
-        if val.is_nil() {
-            return default;
-        }
-
-        match T::try_from(val) {
-            Ok(x) => x,
-            Err(_) => crate::jpanic!(
-                "bad slot #{}, expected {}, got {}",
-                index,
-                T::name(),
-                val.kind()
-            ),
-        }
-    }
-
     fn get_or_panic<T: TryFrom<Janet> + JanetTypeName>(&self, index: usize) -> T {
-        match self.get(index) {
-            Some(&val) => T::try_from(val).unwrap_or_else(|_| {
+        match self.get_value(index) {
+            Some(val) => T::try_from(val).unwrap_or_else(|_| {
                 crate::jpanic!(
                     "bad slot #{}, expected {}, got {}",
                     index,
@@ -1913,11 +1903,15 @@ impl JanetArgs for [Janet] {
             None => crate::jpanic!("bad slot #{}, there is no value in this slot", index),
         }
     }
+}
 
+impl JanetArgs for [Janet] {
+    #[inline]
     fn get_value(&self, index: usize) -> Option<Janet> {
         self.get(index).copied()
     }
 
+    #[inline]
     fn get_tagged(&self, index: usize) -> Option<TaggedJanet> {
         self.get(index).map(|j| j.unwrap())
     }
