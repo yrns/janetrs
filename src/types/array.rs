@@ -805,12 +805,8 @@ impl<'data> JanetArray<'data> {
         }
 
         fn process_loop<F, const DELETED: bool>(
-            original_len: usize,
-            f: &mut F,
-            g: &mut BackshiftOnDrop<'_, '_>,
-        ) where
-            F: FnMut(&mut Janet) -> bool,
-        {
+            original_len: usize, f: &mut F, g: &mut BackshiftOnDrop<'_, '_>,
+        ) where F: FnMut(&mut Janet) -> bool {
             while g.processed_len != original_len {
                 // SAFETY: Unchecked element must be valid.
                 let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.processed_len) };
@@ -2726,7 +2722,9 @@ impl<'data> JanetArray<'data> {
         // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
         // so the call to `add` is safe and the length calculation cannot overflow.
         unsafe {
-            let new_len = usize::unchecked_sub(range.end as usize, range.start as usize);
+            // FIXME: use usize::unchecked_sub after 1.79.0 release
+            let new_len =
+                usize::checked_sub(range.end as usize, range.start as usize).unwrap_unchecked();
             &*ptr::slice_from_raw_parts(self.as_ptr().add(range.start as usize), new_len)
         }
     }
@@ -2746,7 +2744,9 @@ impl<'data> JanetArray<'data> {
         // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
         // so the call to `add` is safe and the length calculation cannot overflow.
         unsafe {
-            let new_len = usize::unchecked_sub(range.end as usize, range.start as usize);
+            // FIXME: use usize::unchecked_sub after 1.79.0 release
+            let new_len =
+                usize::checked_sub(range.end as usize, range.start as usize).unwrap_unchecked();
             &mut *ptr::slice_from_raw_parts_mut(
                 self.as_mut_ptr().add(range.start as usize),
                 new_len,
@@ -3307,8 +3307,7 @@ pub(crate) fn into_range(len: i32, (start, end): (Bound<&i32>, Bound<&i32>)) -> 
 /// Convert pair of `ops::Bound`s into `ops::Range` without performing any bounds checking
 /// and (in debug) overflow checking
 pub(crate) fn into_range_unchecked(
-    len: i32,
-    (start, end): (Bound<&i32>, Bound<&i32>),
+    len: i32, (start, end): (Bound<&i32>, Bound<&i32>),
 ) -> Range<i32> {
     let start = match start {
         Bound::Included(&i) => i,
