@@ -30,7 +30,7 @@ jobs:
       uses: Swatinem/rust-cache@v1
 
     - name: Build Documentation
-      run: cargo dox --features amalgation,nightly -Zrustdoc-map
+      run: cargo doc --features amalgation,nightly -Zrustdoc-map
       env:
         RUSTDOCFLAGS: --cfg _doc
 
