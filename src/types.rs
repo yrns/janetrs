@@ -6,6 +6,7 @@
 //!  - `'data` is the lifetime of data that is owned by the Janet GC.
 use core::{
     cmp::Ordering,
+    ffi::{c_char, CStr},
     fmt::{self, Display, Write},
 };
 
@@ -357,7 +358,15 @@ impl Janet {
     /// exists.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn dynamic(key: impl AsRef<[u8]>) -> Option<Self> {
-        Self::_dynamic(key.as_ref())
+        let key = key.as_ref();
+
+        if key.contains(&b'\0') {
+            unsafe { Self::dynamic_from_ptr(key.as_ptr().cast()) }
+        } else {
+            let mut key: JanetBuffer = key.into();
+            key.push('\0');
+            unsafe { Self::dynamic_from_ptr(key.as_ptr().cast()) }
+        }
     }
 
     // Get a dynamic [keyword](JanetKeyword) binding from the environment if it
