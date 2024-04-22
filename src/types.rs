@@ -1917,6 +1917,21 @@ impl JanetArgs for [Janet] {
     }
 }
 
+impl<const N: usize> JanetArgs for [Janet; N] {
+    #[inline]
+    fn get_value(&self, index: usize) -> Option<Janet> {
+        self.get(index).copied()
+    }
+
+    #[inline]
+    fn get_tagged(&self, index: usize) -> Option<TaggedJanet> {
+        self.get(index).map(|j| j.unwrap())
+    }
+}
+
+// FIXME: Implement for `JanetTuple` and `JanetArray` once internally they start to use
+// `usize` (`size_t`)
+
 /// Trait defining the name of the type known to Janet
 pub trait JanetTypeName {
     /// Returns a string with the name of the type
