@@ -45,9 +45,7 @@ pub fn _panic(msg: Janet) -> ! {
 #[allow(dead_code)]
 #[track_caller]
 pub fn assert_deep_inner(
-    op: &'static str,
-    left: &dyn fmt::Debug,
-    right: &dyn fmt::Debug,
+    op: &'static str, left: &dyn fmt::Debug, right: &dyn fmt::Debug,
     args: Option<fmt::Arguments<'_>>,
 ) -> ! {
     match args {
