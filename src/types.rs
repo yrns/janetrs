@@ -1846,13 +1846,13 @@ pub trait JanetArgs {
     ///
     /// #[janet_fn(arity(fix(1)))]
     /// fn my_func(args: &mut [Janet]) -> Janet {
-    ///     let my_str: JanetString = args.get_panic(0);
+    ///     let my_str: JanetString = args.get_or_panic(0);
     ///
     ///     // Rest of the function
     ///     todo!()
     /// }
     /// ```
-    fn get_panic<T: TryFrom<Janet> + JanetTypeName>(&self, index: usize) -> T;
+    fn get_or_panic<T: TryFrom<Janet> + JanetTypeName>(&self, index: usize) -> T;
 }
 
 impl JanetArgs for [Janet] {
@@ -1883,7 +1883,7 @@ impl JanetArgs for [Janet] {
         }
     }
 
-    fn get_panic<T: TryFrom<Janet> + JanetTypeName>(&self, index: usize) -> T {
+    fn get_or_panic<T: TryFrom<Janet> + JanetTypeName>(&self, index: usize) -> T {
         match self.get(index) {
             Some(&val) => T::try_from(val).unwrap_or_else(|_| {
                 crate::jpanic!(
