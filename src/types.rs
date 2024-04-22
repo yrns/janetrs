@@ -1786,8 +1786,25 @@ pub trait JanetArgs {
 
     /// Get the argument at the `index` position as the [`TaggedJanet`] type.
     fn get_tagged(&self, index: usize) -> Option<TaggedJanet>;
+
     /// Get the argument at the `index` position and tries to convert to `T`.
-    fn get_unwrapped<T: TryFrom<Janet>>(&self, index: usize) -> Result<T, T::Error>;
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use janetrs::{janet_fn, Janet, JanetArgs};
+    ///
+    /// // Lets say it's a function that if receives an argument, if is not the wanted type, it
+    /// // defaults to the given value.
+    /// #[janet_fn(arity(range(0, 1)))]
+    /// fn my_func(args: &mut [Janet]) -> Janet {
+    ///     let res = args.try_get::<i32>(0);
+    ///
+    ///     // Rest of the function
+    ///     todo!()
+    /// }
+    /// ```
+    fn try_get<T: TryFrom<Janet>>(&self, index: usize) -> Result<T, T::Error>;
 
     /// Get the argument at the `index` position and convert to `T`, if that fails,
     /// returns the `default` value.
@@ -1795,7 +1812,7 @@ pub trait JanetArgs {
     /// # Examples
     ///
     /// ```
-    /// use janetrs::{bad_slot, janet_fn, Janet, JanetArgs};
+    /// use janetrs::{janet_fn, Janet, JanetArgs};
     ///
     /// // Lets say it's a function that if receives an argument, if is not the wanted type, it
     /// // defaults to the given value.
@@ -1819,7 +1836,7 @@ pub trait JanetArgs {
     /// # Examples
     ///
     /// ```
-    /// use janetrs::{bad_slot, janet_fn, Janet, JanetArgs};
+    /// use janetrs::{janet_fn, Janet, JanetArgs};
     ///
     /// // Lets say it's a function that receives a second argument that change de behavior of
     /// // the function
@@ -1842,7 +1859,7 @@ pub trait JanetArgs {
     /// # Examples
     ///
     /// ```
-    /// use janetrs::{bad_slot, janet_fn, Janet, JanetArgs, JanetString};
+    /// use janetrs::{janet_fn, Janet, JanetArgs, JanetString};
     ///
     /// #[janet_fn(arity(fix(1)))]
     /// fn my_func(args: &mut [Janet]) -> Janet {
@@ -1856,7 +1873,7 @@ pub trait JanetArgs {
 }
 
 impl JanetArgs for [Janet] {
-    fn get_unwrapped<T: TryFrom<Janet>>(&self, index: usize) -> Result<T, T::Error> {
+    fn try_get<T: TryFrom<Janet>>(&self, index: usize) -> Result<T, T::Error> {
         T::try_from(*self.get(index).unwrap_or(&Janet::nil()))
     }
 
