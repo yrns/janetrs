@@ -1,11 +1,12 @@
-//! Module for the Janet environment structure and methods.
+//! Module for the Janet VM environment structure, methods and functions.
 use core::ptr;
 
 #[cfg(not(feature = "std"))]
 use alloc::{format, string::String};
 
 use crate::{
-    function::JanetRawCFunction, Janet, JanetKeyword, JanetString, JanetSymbol, JanetTable,
+    function::JanetRawCFunction, Janet, JanetBuffer, JanetKeyword, JanetString, JanetSymbol,
+    JanetTable,
 };
 
 /// Representation of the Janet runtime environment, like global definitions, available
@@ -323,6 +324,36 @@ impl<'a> CFunOptions<'a> {
     }
 }
 
+/// Set a dynamic binding in the VM runtime, binding a `value` to a `keyword`.
+///
+/// Once set, you can later retrieve it by using [`Janet::dynamic`] fucntion.
+///
+/// # Examples
+/// ```
+/// use janetrs::Janet;
+/// # let _client = janetrs::client::JanetClient::init().unwrap();
+///
+/// assert_eq!(Janet::dynamic("my_dyn_value"), None);
+/// janetrs::env::set_dynamic("my_dyn_value", Janet::number(10.0));
+/// assert_eq!(Janet::dynamic("my_dyn_value"), Some(Janet::number(10.0)));
+/// ```
+pub fn set_dynamic(keyword: impl AsRef<[u8]>, value: Janet) {
+    use core::ffi::c_char;
+    unsafe fn set_dyn(keyword: *const c_char, value: Janet) {
+        evil_janet::janet_setdyn(keyword, value.into())
+    }
+
+    let keyword = keyword.as_ref();
+    if keyword.contains(&b'\0') {
+        unsafe { set_dyn(keyword.as_ptr().cast(), value) }
+    } else {
+        let mut keyword: JanetBuffer = keyword.into();
+        keyword.push('\0');
+
+        unsafe { set_dyn(keyword.as_ptr().cast(), value) }
+    }
+}
+
 
 #[cfg(all(test, any(feature = "amalgation", feature = "link-system")))]
 mod tests {
@@ -353,6 +384,17 @@ mod tests {
 
         let test1 = env.resolve("test").expect("valid var");
         assert!(test1.deep_eq(&Janet::from(array![1.0])));
+
+        Ok(())
+    }
+
+    #[test]
+    fn set_dynamic() -> Result<(), crate::client::Error> {
+        let _client = crate::client::JanetClient::init()?;
+
+        assert_eq!(Janet::dynamic("my_dyn_value"), None);
+        super::set_dynamic("my_dyn_value", Janet::number(10.0));
+        assert_eq!(Janet::dynamic("my_dyn_value"), Some(Janet::number(10.0)));
 
         Ok(())
     }

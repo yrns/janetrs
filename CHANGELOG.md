@@ -16,6 +16,7 @@ All notable changes to the library should be put here
 - Feat: Add `JanetBuffer::push_janet_string` method
 - Feat: Add `assert_deep_eq!` macro
 - Feat: Add `assert_deep_ne!` macro
+- Feat: Add `env::set_dynamic` function
 - Perf: Avoid allocation in `Janet::dynamic` if the passed argument is already null terminated
 - Refactor: Simplify `jpanic!` macro
 - Refactor: janetrs_macros 0.7.0 — Update `syn` crate to 2.0
