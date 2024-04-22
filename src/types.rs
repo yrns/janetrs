@@ -360,11 +360,17 @@ impl Janet {
         Self::_dynamic(key.as_ref())
     }
 
-    fn _dynamic(key: &[u8]) -> Option<Self> {
-        let mut key: JanetBuffer = key.into();
-        key.push('\0');
+    // Get a dynamic [keyword](JanetKeyword) binding from the environment if it
+    /// exists.
+    pub fn dynamic_from_cstr(key: &CStr) -> Option<Self> {
+        unsafe { Self::dynamic_from_ptr(key.as_ptr()) }
+    }
 
-        let janet = Self::from(unsafe { evil_janet::janet_dyn(key.as_ptr() as *const _) });
+    /// # Safety
+    ///
+    /// `ptr` must be a null terminated string
+    unsafe fn dynamic_from_ptr(ptr: *const c_char) -> Option<Self> {
+        let janet = Self::from(unsafe { evil_janet::janet_dyn(ptr) });
 
         if janet.is_nil() { None } else { Some(janet) }
     }
