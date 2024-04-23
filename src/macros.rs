@@ -330,7 +330,7 @@ macro_rules! bad_slot {
 /// any janet panic that may happen as a [`Result`].
 ///
 /// # Examples
-/// ```ignore
+/// ```rust, ignore
 /// use janetrs::{jcatch, jpanic, Janet};
 ///
 /// fn panic_fn() {
@@ -345,7 +345,7 @@ macro_rules! bad_slot {
 /// }
 /// ```
 ///
-/// [`JanetCFunction`]: ./types/struct.JanetCFunction.html
+/// [`JanetCFunction`]: crate::JanetCFunction
 #[crate::cjvg("1.12.2")]
 #[macro_export]
 macro_rules! jcatch {
