@@ -1812,6 +1812,55 @@ pub trait JanetArgs {
     /// Get the argument at the `index` position as the [`TaggedJanet`] type.
     fn get_tagged(&self, index: usize) -> Option<TaggedJanet>;
 
+    /// Get the argument at the `index` position if they match one if the [`JanetType`] in
+    /// `matches`, janet-panicking otherwise.
+    ///
+    /// # Janet Panics
+    /// This function may panic if the item at index does not match any of the `JanetType`
+    /// in `matches`.
+    fn get_matches(&self, index: usize, matches: &[JanetType]) -> Option<Janet> {
+        /// Helper struct to format possible type matches in [`get_matches`] and
+        /// [`get_tagged_matches`].
+        ///
+        /// [`get_matches`]: JanetArgs::get_matches
+        /// [`get_tagged_matches`]: JanetArgs::get_tagged_matches
+        struct MatchesFormater<'a>(&'a [JanetType]);
+
+        impl fmt::Display for MatchesFormater<'_> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                let len = self.0.len() - 1;
+                for (i, ty) in self.0.iter().enumerate() {
+                    write!(f, "{ty}")?;
+                    if i < len {
+                        write!(f, "|")?;
+                    }
+                }
+                Ok(())
+            }
+        }
+
+        let val = self.get_value(index)?;
+        let kind = val.kind();
+
+        if !matches.contains(&kind) {
+            crate::jpanic!(
+                "bad slot #{index}, expected {}, got {kind}",
+                MatchesFormater(matches)
+            )
+        }
+        Some(val)
+    }
+
+    /// Get the argument at the `index` position if they match one if the [`JanetType`] in
+    /// `matches` as the [`TaggedJanet`] type, janet-panicking otherwise.
+    ///
+    /// # Janet Panics
+    /// This function may panic if the item at index does not match any of the `JanetType`
+    /// in `matches`.
+    fn get_tagged_matches(&self, index: usize, matches: &[JanetType]) -> Option<TaggedJanet> {
+        self.get_matches(index, matches).map(|val| val.unwrap())
+    }
+
     /// Get the argument at the `index` position and tries to convert to `T`.
     ///
     /// # Examples
