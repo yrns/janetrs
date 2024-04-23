@@ -226,17 +226,18 @@ impl JanetClient {
     ///
     /// # Examples
     /// ```
-    /// use janetrs::{client::JanetClient, env::CFunOptions, lowlevel, Janet, JanetType};
+    /// use janetrs::{client::JanetClient, env::CFunOptions, janet_fn, Janet, JanetType};
     ///
-    /// unsafe extern "C-unwind" fn test(argc: i32, argv: *mut lowlevel::Janet) -> lowlevel::Janet {
-    ///     Janet::nil().into()
+    /// #[janet_fn]
+    /// fn test(_args: &mut [Janet]) -> Janet {
+    ///     Janet::nil()
     /// }
     ///
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = JanetClient::init()?;
     /// assert!(client.env().is_none());
     ///
-    /// client.add_c_fn(CFunOptions::new("test", test));
+    /// client.add_c_fn(CFunOptions::new(c"test", test));
     /// assert!(client.env().is_some());
     ///
     /// let c = client.run("test")?;
