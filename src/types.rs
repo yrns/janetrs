@@ -1875,7 +1875,7 @@ pub trait JanetArgs {
     /// // defaults to the given value.
     /// #[janet_fn(arity(range(0, 1)))]
     /// fn my_func(args: &mut [Janet]) -> Janet {
-    ///     let my_flag = args.get_or_default(0);
+    ///     let my_flag: i32 = args.get_or_default(0);
     ///
     ///     // Rest of the function
     ///     todo!()
@@ -1888,6 +1888,32 @@ pub trait JanetArgs {
         self.get_value(index)
             .and_then(|val| T::try_from(val).ok())
             .unwrap_or_default()
+    }
+
+    /// Get the argument at the `index` position and convert to `T`, if that fails,
+    /// computes the value from a closure.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use janetrs::{janet_fn, Janet, JanetArgs};
+    ///
+    /// // Lets say it's a function that if receives an argument, if is not the wanted type, it
+    /// // defaults to the given value.
+    /// #[janet_fn(arity(range(0, 1)))]
+    /// fn my_func(args: &mut [Janet]) -> Janet {
+    ///     let my_flag: i32 = args.get_or_else(0, |_| 10);
+    ///
+    ///     // Rest of the function
+    ///     todo!()
+    /// }
+    /// ```
+    fn get_or_else<T, F>(&self, index: usize, op: F) -> T
+    where
+        T: TryFrom<Janet>,
+        F: FnOnce(T::Error) -> T,
+    {
+        self.try_get(index).unwrap_or_else(op)
     }
 
     /// Get the argument at the `index` position, if it's Janet nil, returns the `default`
