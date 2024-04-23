@@ -1818,7 +1818,7 @@ pub trait JanetArgs {
     /// # Janet Panics
     /// This function may panic if the item at index does not match any of the `JanetType`
     /// in `matches`.
-    fn get_matches(&self, index: usize, matches: &[JanetType]) -> Option<Janet> {
+    fn get_matches(&self, index: usize, matches: &[JanetType]) -> Janet {
         /// Helper struct to format possible type matches in [`get_matches`] and
         /// [`get_tagged_matches`].
         ///
@@ -1839,7 +1839,9 @@ pub trait JanetArgs {
             }
         }
 
-        let val = self.get_value(index)?;
+        let val = self.get_value(index).unwrap_or_else(|| {
+            crate::jpanic!("bad slot #{}, there is no value in this slot", index)
+        });
         let kind = val.kind();
 
         if !matches.contains(&kind) {
@@ -1848,7 +1850,7 @@ pub trait JanetArgs {
                 MatchesFormater(matches)
             )
         }
-        Some(val)
+        val
     }
 
     /// Get the argument at the `index` position if they match one if the [`JanetType`] in
@@ -1857,8 +1859,8 @@ pub trait JanetArgs {
     /// # Janet Panics
     /// This function may panic if the item at index does not match any of the `JanetType`
     /// in `matches`.
-    fn get_tagged_matches(&self, index: usize, matches: &[JanetType]) -> Option<TaggedJanet> {
-        self.get_matches(index, matches).map(|val| val.unwrap())
+    fn get_tagged_matches(&self, index: usize, matches: &[JanetType]) -> TaggedJanet {
+        self.get_matches(index, matches).unwrap()
     }
 
     /// Get the argument at the `index` position and tries to convert to `T`.
