@@ -67,7 +67,13 @@ compile_error!(r#"You can only use either "amalgation" or "system" feature, not 
 // Janet requires allocation
 extern crate alloc;
 
-pub use evil_janet as lowlevel;
+/// This module has a expose the entire Janet C-API structures, constants and functions.
+///
+/// This module exists in the case of a functionality of the Janet C-API can't be, or is
+/// not yet, implemented in a safe abstraction.
+pub mod lowlevel {
+    pub use evil_janet::*;
+}
 
 pub mod allocator;
 #[cfg(any(feature = "amalgation", feature = "link-system"))]
