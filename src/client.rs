@@ -245,7 +245,7 @@ impl JanetClient {
     /// # }
     /// ```
     #[inline]
-    pub fn add_c_fn(&mut self, cfun_opt: CFunOptions) {
+    pub fn add_c_fn(&mut self, cfun_opt: CFunOptions<'static>) {
         if self.env().is_none() {
             self.env_table = Some(JanetEnvironment::default());
         }

@@ -90,7 +90,7 @@ impl JanetEnvironment {
     /// Add a C function in the environment and register it on the VM.
     #[crate::cjvg("1.0.0", "1.17.0")]
     #[inline]
-    pub fn add_c_fn(&mut self, cfun_opt: CFunOptions) {
+    pub fn add_c_fn(&mut self, cfun_opt: CFunOptions<'static>) {
         let namespace = cfun_opt
             .namespace
             .map(|s| s.as_ptr())
@@ -121,7 +121,7 @@ impl JanetEnvironment {
     /// Add a C function in the environment and register it on the VM.
     #[crate::cjvg("1.17.0")]
     #[inline]
-    pub fn add_c_fn(&mut self, cfun_opt: CFunOptions) {
+    pub fn add_c_fn(&mut self, cfun_opt: CFunOptions<'static>) {
         let namespace = cfun_opt
             .namespace
             .map(|s| s.as_ptr())
