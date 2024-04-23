@@ -1,5 +1,5 @@
 //! Module for the Janet VM environment structure, methods and functions.
-use core::ptr;
+use core::{ffi::CStr, ptr};
 
 #[cfg(not(feature = "std"))]
 use alloc::{format, string::String};
@@ -93,17 +93,20 @@ impl JanetEnvironment {
     pub fn add_c_fn(&mut self, cfun_opt: CFunOptions) {
         let namespace = cfun_opt
             .namespace
-            .map_or(String::from("\0"), |namespace| format!("{}\0", namespace));
-        let name = format!("{}\0", cfun_opt.name);
-        let doc = cfun_opt
-            .doc
-            .map_or(String::from("\0"), |doc| format!("{}\0", doc));
+            .map(|s| s.as_ptr())
+            .unwrap_or(ptr::null());
+        let name = if cfun_opt.name.is_empty() {
+            ptr::null()
+        } else {
+            cfun_opt.name.as_ptr()
+        };
+        let doc = cfun_opt.doc.map(|s| s.as_ptr()).unwrap_or(ptr::null());
 
         let reg = [
             crate::lowlevel::JanetReg {
-                name: name.as_ptr() as _,
+                name,
                 cfun: Some(cfun_opt.value),
-                documentation: doc.as_ptr() as _,
+                documentation: doc,
             },
             crate::lowlevel::JanetReg {
                 name: core::ptr::null(),
@@ -112,7 +115,7 @@ impl JanetEnvironment {
             },
         ];
 
-        unsafe { evil_janet::janet_cfuns(self.0.raw, namespace.as_ptr() as _, reg.as_ptr()) }
+        unsafe { evil_janet::janet_cfuns(self.0.raw, namespace, reg.as_ptr()) }
     }
 
     /// Add a C function in the environment and register it on the VM.
@@ -121,26 +124,26 @@ impl JanetEnvironment {
     pub fn add_c_fn(&mut self, cfun_opt: CFunOptions) {
         let namespace = cfun_opt
             .namespace
-            .map_or(String::from("\0"), |namespace| format!("{namespace}\0"));
-        let name = format!("{}\0", cfun_opt.name);
-        let doc = cfun_opt
-            .doc
-            .map_or(String::from("\0"), |doc| format!("{doc}\0"));
+            .map(|s| s.as_ptr())
+            .unwrap_or(ptr::null());
+        let name = if cfun_opt.name.is_empty() {
+            ptr::null()
+        } else {
+            cfun_opt.name.as_ptr()
+        };
+        let doc = cfun_opt.doc.map(|s| s.as_ptr()).unwrap_or(ptr::null());
 
         let source_file = cfun_opt
             .source_file
-            .map_or(String::new(), |sf| format!("{sf}\0"));
+            .map(|s| s.as_ptr())
+            .unwrap_or(ptr::null());
 
         let reg = [
             crate::lowlevel::JanetRegExt {
-                name: name.as_ptr() as _,
+                name,
                 cfun: Some(cfun_opt.value),
-                documentation: doc.as_ptr() as _,
-                source_file: if source_file.is_empty() {
-                    ptr::null()
-                } else {
-                    source_file.as_ptr() as _
-                },
+                documentation: doc,
+                source_file,
                 source_line: cfun_opt.source_line.unwrap_or_default() as _,
             },
             crate::lowlevel::JanetRegExt {
@@ -152,7 +155,7 @@ impl JanetEnvironment {
             },
         ];
 
-        unsafe { evil_janet::janet_cfuns_ext(self.0.raw, namespace.as_ptr() as _, reg.as_ptr()) }
+        unsafe { evil_janet::janet_cfuns_ext(self.0.raw, namespace, reg.as_ptr()) }
     }
 
     /// Search the given `symbol` in the environment and returns the value if found.
@@ -274,17 +277,17 @@ impl<'a> VarOptions<'a> {
 }
 
 pub struct CFunOptions<'a> {
-    namespace: Option<&'a str>,
-    name: &'a str,
+    namespace: Option<&'a CStr>,
+    name: &'a CStr,
     value: JanetRawCFunction,
-    doc: Option<&'a str>,
-    source_file: Option<&'a str>,
+    doc: Option<&'a CStr>,
+    source_file: Option<&'a CStr>,
     source_line: Option<u32>,
 }
 
 impl<'a> CFunOptions<'a> {
     /// Creates a new Janet C function definition with given `name` and `value`.
-    pub fn new(name: &'a str, value: JanetRawCFunction) -> Self {
+    pub fn new(name: &'a CStr, value: JanetRawCFunction) -> Self {
         Self {
             namespace: None,
             name,
@@ -297,21 +300,21 @@ impl<'a> CFunOptions<'a> {
 
     /// Configure the namespace of the Janet C function definition.
     #[must_use]
-    pub fn namespace(mut self, namespace: &'a str) -> Self {
+    pub fn namespace(mut self, namespace: &'a CStr) -> Self {
         self.namespace = Some(namespace);
         self
     }
 
     /// Configure the docs of the Janet C function definition.
     #[must_use]
-    pub fn doc(mut self, doc: &'a str) -> Self {
+    pub fn doc(mut self, doc: &'a CStr) -> Self {
         self.doc = Some(doc);
         self
     }
 
     /// Configure the source file of the Janet C function definition.
     #[must_use]
-    pub fn source_file(mut self, source_file: &'a str) -> Self {
+    pub fn source_file(mut self, source_file: &'a CStr) -> Self {
         self.source_file = Some(source_file);
         self
     }
