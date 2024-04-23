@@ -1,7 +1,7 @@
 //! For a more complete example to create a Janet package with jpm, check out [this
 //! template repository](https://github.com/GrayJack/rust-janet-module-template)
 
-use janetrs::{declare_janet_mod, janet_fn, jpanic, Janet, JanetTuple, TaggedJanet};
+use janetrs::{declare_janet_mod, janet_fn, Janet, JanetArgs, JanetTuple, TaggedJanet};
 
 /// (template/hello)
 ///
@@ -18,13 +18,12 @@ pub fn rust_hello(_args: &mut [Janet]) -> Janet {
 /// argument, else return nil
 #[janet_fn(arity(fix(1)))]
 pub fn chars(args: &mut [Janet]) -> Janet {
-    match args[0].unwrap() {
+    use janetrs::JanetType::*;
+
+    match args.get_tagged_matches(0, &[Buffer, String]) {
         TaggedJanet::Buffer(b) => b.chars().collect::<JanetTuple>().into(),
         TaggedJanet::String(s) => s.chars().collect::<JanetTuple>().into(),
-        _ => jpanic!(
-            "bad slot #0, expected string|buffer, got {}",
-            args[0].kind()
-        ),
+        _ => unreachable!("Already checked to be a buffer|string"),
     }
 }
 
