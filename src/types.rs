@@ -52,6 +52,18 @@ pub use tuple::JanetTuple;
 
 use crate::{env::JanetEnvironment, janet_abstract::AbstractError};
 
+const JANET_SIZEMAX: isize = if cfg!(target_pointer_width = "32") {
+    i32::MAX as isize
+} else {
+    evil_janet::JANET_INTMAX_INT64 as isize
+};
+
+const JANET_SIZEMIN: isize = if cfg!(target_pointer_width = "32") {
+    i32::MIN as isize
+} else {
+    evil_janet::JANET_INTMIN_INT64 as isize
+};
+
 /// A trait to express a deep equality.
 ///
 /// A deep equality is to check equality of the collections by value. That is needed
@@ -74,7 +86,7 @@ pub trait DeepEq<Rhs = Self> {
 ///
 /// This error only occurs when the [`Janet`] and the type it was being converted doesn't
 /// match.
-#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Hash, Default)]
+#[derive(Debug, PartialEq, PartialOrd, Default)]
 #[non_exhaustive]
 pub enum JanetConversionError {
     /// Mismatched types.
@@ -82,6 +94,10 @@ pub enum JanetConversionError {
     /// (expected, got)
     WrongKind(JanetType, JanetType),
     InvalidAbstract(AbstractError),
+    InvalidInt32(f64),
+    InvalidUInt32(f64),
+    InvalidSSize(f64),
+    InvalidUSize(f64),
     #[default]
     Other,
 }
@@ -101,6 +117,14 @@ impl Display for JanetConversionError {
         match self {
             Self::WrongKind(expected, got) => write!(f, "Expected {expected}, got {got}"),
             Self::InvalidAbstract(err) => write!(f, "{err}"),
+            Self::InvalidInt32(bad_value) => {
+                write!(f, "Expected 32 bit signed integer, got {bad_value}")
+            },
+            Self::InvalidUInt32(bad_value) => {
+                write!(f, "Expected 32 bit unsigned integer, got {bad_value}")
+            },
+            Self::InvalidSSize(bad_value) => write!(f, "Expected signed size, got {bad_value}"),
+            Self::InvalidUSize(bad_value) => write!(f, "Expected unsigned size, got {bad_value}"),
             Self::Other => f.pad("Error converting Janet to concrete type"),
         }
     }
@@ -858,6 +882,40 @@ impl TryFrom<Janet> for u32 {
         }
     }
 }
+
+impl TryFrom<Janet> for isize {
+    type Error = JanetConversionError;
+
+    #[inline]
+    fn try_from(value: Janet) -> Result<Self, Self::Error> {
+        match value.kind() {
+            JanetType::Number => {
+                let val = unsafe { evil_janet::janet_unwrap_number(value.inner) };
+                if val >= JANET_SIZEMIN as f64 && val <= JANET_SIZEMAX as f64 {
+                    Ok(val.trunc() as isize)
+                } else {
+                    Err(JanetConversionError::InvalidSSize(val))
+                }
+            },
+            got => Err(JanetConversionError::wrong_kind(JanetType::Number, got)),
+        }
+    }
+}
+
+impl TryFrom<Janet> for usize {
+    type Error = JanetConversionError;
+
+    #[inline]
+    fn try_from(value: Janet) -> Result<Self, Self::Error> {
+        match value.kind() {
+            JanetType::Number => {
+                let val = unsafe { evil_janet::janet_unwrap_number(value.inner) };
+                if val >= 0.0 && val <= JANET_SIZEMAX as f64 {
+                    Ok(val.trunc() as usize)
+                } else {
+                    Err(JanetConversionError::InvalidUSize(val))
+                }
+            },
             got => Err(JanetConversionError::wrong_kind(JanetType::Number, got)),
         }
     }
