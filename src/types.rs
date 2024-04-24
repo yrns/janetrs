@@ -827,7 +827,37 @@ impl TryFrom<Janet> for i32 {
     #[inline]
     fn try_from(value: Janet) -> Result<Self, Self::Error> {
         match value.kind() {
-            JanetType::Number => Ok(unsafe { evil_janet::janet_unwrap_integer(value.inner) }),
+            JanetType::Number => {
+                let val = unsafe { evil_janet::janet_unwrap_number(value.inner) };
+                if val >= i32::MIN as f64 && val <= i32::MAX as f64 {
+                    Ok(val.trunc() as i32)
+                } else {
+                    Err(JanetConversionError::InvalidInt32(val))
+                }
+            },
+            got => Err(JanetConversionError::wrong_kind(JanetType::Number, got)),
+        }
+    }
+}
+
+impl TryFrom<Janet> for u32 {
+    type Error = JanetConversionError;
+
+    #[inline]
+    fn try_from(value: Janet) -> Result<Self, Self::Error> {
+        match value.kind() {
+            JanetType::Number => {
+                let val = unsafe { evil_janet::janet_unwrap_number(value.inner) };
+                if val >= 0.0 && val <= i32::MAX as f64 {
+                    Ok(val.trunc() as u32)
+                } else {
+                    Err(JanetConversionError::InvalidUInt32(val))
+                }
+            },
+            got => Err(JanetConversionError::wrong_kind(JanetType::Number, got)),
+        }
+    }
+}
             got => Err(JanetConversionError::wrong_kind(JanetType::Number, got)),
         }
     }
